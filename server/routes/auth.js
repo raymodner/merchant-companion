@@ -5,7 +5,9 @@ import { pool } from '../db.js';
 import { auth } from '../auth.js';
 
 const router = Router();
-const secret = () => process.env.JWT_SECRET || 'dev-secret-change-me';
+const secret = () => process.env.JWT_SECRET;
+
+const PUBLIC_FIELDS = 'id, username, email, preferred_country, preferred_state';
 
 router.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
@@ -14,7 +16,7 @@ router.post('/register', async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 10);
     const { rows } = await pool.query(
-      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email',
+      `INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING ${PUBLIC_FIELDS}`,
       [username, email, hash]
     );
     const token = jwt.sign({ id: rows[0].id, username: rows[0].username }, secret(), { expiresIn: '7d' });
@@ -33,12 +35,33 @@ router.post('/login', async (req, res) => {
     if (!rows.length || !(await bcrypt.compare(password, rows[0].password)))
       return res.status(401).json({ error: 'Invalid credentials' });
     const token = jwt.sign({ id: rows[0].id, username: rows[0].username }, secret(), { expiresIn: '7d' });
-    res.json({ token, user: { id: rows[0].id, username: rows[0].username, email: rows[0].email } });
+    res.json({ token, user: { id: rows[0].id, username: rows[0].username, email: rows[0].email, preferred_country: rows[0].preferred_country, preferred_state: rows[0].preferred_state } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/me', auth, (req, res) => res.json({ user: req.user }));
+router.get('/me', auth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT ${PUBLIC_FIELDS} FROM users WHERE id = $1`, [req.user.id]);
+    if (!rows.length) return res.status(404).json({ error: 'User not found' });
+    res.json({ user: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/preferences', auth, async (req, res) => {
+  const { country, state } = req.body;
+  try {
+    await pool.query(
+      'UPDATE users SET preferred_country = $1, preferred_state = $2 WHERE id = $3',
+      [country || null, state || null, req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;

@@ -53,30 +53,39 @@
 
     <div class="res-filters">
       <div class="res-filter-row">
-        <label class="res-filter-label">Type</label>
-        <select id="res-type" class="auth-input res-select">
-          <option value="">All Types</option>
-          <option value="Ore">⛏ Ore</option>
-          <option value="Stone">🪨 Stone</option>
-          <option value="Wood">🌲 Wood</option>
-          <option value="Raw Food">🌾 Raw Food</option>
-        </select>
+        <label class="res-filter-label">Find</label>
+        <input id="res-product" class="auth-input res-select" type="text" placeholder="e.g. Sword, Wine, Pot…" autocomplete="off" />
       </div>
-      <div class="res-filter-row">
-        <label class="res-filter-label">Resource</label>
-        <select id="res-name" class="auth-input res-select"></select>
-      </div>
-      <div class="res-filter-row">
-        <label class="res-filter-label">Min ★</label>
-        <div class="res-stars-picker">
-          <span class="res-star-opt active" data-val="0">Any</span>
-          <span class="res-star-opt" data-val="1">★</span>
-          <span class="res-star-opt" data-val="2">★★</span>
-          <span class="res-star-opt" data-val="3">★★★</span>
-          <span class="res-star-opt" data-val="4">★★★★</span>
-          <span class="res-star-opt" data-val="5">★★★★★</span>
+      <button class="res-filter-toggle" id="res-filter-toggle">Filters <span id="res-filter-arrow">▾</span></button>
+      <div class="res-filter-body" id="res-filter-body">
+        <div class="res-filter-row">
+          <label class="res-filter-label">Type</label>
+          <div id="res-type-wrap" class="res-dd-wrap"></div>
+        </div>
+        <div class="res-filter-row">
+          <label class="res-filter-label">Resource</label>
+          <div id="res-name-wrap" class="res-dd-wrap"></div>
+        </div>
+        <div class="res-filter-row">
+          <label class="res-filter-label">Terrain</label>
+          <div id="res-terrain-wrap" class="res-dd-wrap"></div>
+        </div>
+        <div class="res-filter-row">
+          <label class="res-filter-label">Min ★</label>
+          <div class="res-stars-picker">
+            <span class="res-star-opt active" data-val="0">Any</span>
+            <span class="res-star-opt" data-val="1">★</span>
+            <span class="res-star-opt" data-val="2">★★</span>
+            <span class="res-star-opt" data-val="3">★★★</span>
+            <span class="res-star-opt" data-val="4">★★★★</span>
+            <span class="res-star-opt" data-val="5">★★★★★</span>
+          </div>
         </div>
       </div>
+    </div>
+
+    <div id="res-edit-bar">
+      <button id="res-edit-btn">✎ Edit Ratings</button>
     </div>
 
     <div id="resource-results"></div>
@@ -94,18 +103,9 @@
       <span id="username-display" style="display:none"></span>
       <span id="logout-btn" style="display:none">↩ Logout</span>
     </div>
-    <select id="country-select"></select>
-    <select id="state-select" style="display:none">
-      <option value="">— Select a state —</option>
-    </select>
+    <div id="country-select-wrap"></div>
+    <div id="state-select-wrap" style="display:none"></div>
   </div>
-
-  <section class="panel">
-    <h2 class="panel-title">Paint</h2>
-    <div id="terrain-list"></div>
-    <div class="divider"></div>
-    <div id="eraser-btn" class="action-btn">⬜ Eraser</div>
-  </section>
 
   <section class="panel">
     <h2 class="panel-title">Filters</h2>
@@ -117,18 +117,18 @@
   </section>
 
   <section class="panel">
-    <h2 class="panel-title">Data</h2>
-    <div id="export-btn" class="action-btn secondary-btn">↓ Export JSON</div>
-    <div id="import-btn" class="action-btn secondary-btn">↑ Import JSON</div>
-    <input type="file" id="import-input" accept=".json" style="display:none" />
-  </section>
-
-  <section class="panel">
     <h2 class="panel-title">Resources</h2>
     <div id="resource-btn" class="action-btn secondary-btn">🔍 Resource Lookup</div>
   </section>
 
-  <div id="reset-btn">✕ Reset Map</div>
+  <section class="panel">
+    <h2 class="panel-title">Paint</h2>
+    <div id="paint-mode-btn" class="action-btn paint-mode-btn">🖌 Start Painting</div>
+    <div class="divider"></div>
+    <div id="terrain-list"></div>
+    <div class="divider"></div>
+    <div id="eraser-btn" class="action-btn">⬜ Eraser</div>
+  </section>
 </aside>
 
 <div id="map"></div>

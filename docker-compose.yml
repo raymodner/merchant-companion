@@ -11,7 +11,8 @@ services:
       PGTZ: Europe/Amsterdam
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./setup.sql:/docker-entrypoint-initdb.d/setup.sql:ro
+      - ./setup.sql:/docker-entrypoint-initdb.d/01_setup.sql:ro
+      - ./seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
     ports:
       - '5432:5432'
     healthcheck:
