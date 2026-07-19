@@ -34,6 +34,7 @@ services:
       DB_NAME: ${DB_NAME}
       PORT: 3001
       NODE_ENV: ${NODE_ENV:-development}
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - '3001:3001'
     depends_on:

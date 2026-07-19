@@ -2,37 +2,46 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { pool } from './db.js';
+import { auth } from './auth.js';
+import authRoutes from './routes/auth.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ── Health ────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
-// ── Load terrain for a region ─────────────────────────────────────────────
+app.use('/api/auth', authRoutes);
+
+// ── Terrain ───────────────────────────────────────────────────────────────
+
+// Public: latest paint per cell for a region
 app.get('/api/terrain/:region', async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      'SELECT data FROM regions WHERE region_key = $1',
-      [req.params.region]
-    );
-    // pg auto-parses JSONB columns into JS objects
-    res.json({ data: rows[0]?.data ?? {} });
+    const { rows } = await pool.query(`
+      SELECT DISTINCT ON (cell_key) cell_key, terrain_key
+      FROM cell_paints
+      WHERE region_key = $1
+      ORDER BY cell_key, painted_at DESC
+    `, [req.params.region]);
+    const data = {};
+    for (const row of rows) {
+      if (row.terrain_key) data[row.cell_key] = row.terrain_key;
+    }
+    res.json({ data });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── Save (upsert) terrain for a region ───────────────────────────────────
-app.post('/api/terrain/:region', async (req, res) => {
+// Auth required: record a single cell paint (or erase when terrainKey is null)
+app.post('/api/terrain/:region/cell', auth, async (req, res) => {
+  const { cellKey, terrainKey } = req.body;
+  if (!cellKey) return res.status(400).json({ error: 'cellKey required' });
   try {
     await pool.query(
-      `INSERT INTO regions (region_key, data)
-       VALUES ($1, $2)
-       ON CONFLICT (region_key)
-       DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
-      [req.params.region, req.body.data]
+      'INSERT INTO cell_paints (region_key, cell_key, terrain_key, user_id) VALUES ($1, $2, $3, $4)',
+      [req.params.region, cellKey, terrainKey || null, req.user.id]
     );
     res.json({ ok: true });
   } catch (err) {
@@ -40,10 +49,35 @@ app.post('/api/terrain/:region', async (req, res) => {
   }
 });
 
-// ── Delete terrain for a region ───────────────────────────────────────────
-app.delete('/api/terrain/:region', async (req, res) => {
+// Auth required: bulk import — clears history for region and inserts new data
+app.post('/api/terrain/:region/import', auth, async (req, res) => {
+  const { data } = req.body;
+  if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data required' });
+  const client = await pool.connect();
   try {
-    await pool.query('DELETE FROM regions WHERE region_key = $1', [req.params.region]);
+    await client.query('BEGIN');
+    await client.query('DELETE FROM cell_paints WHERE region_key = $1', [req.params.region]);
+    for (const [cellKey, terrainKey] of Object.entries(data)) {
+      if (!terrainKey) continue;
+      await client.query(
+        'INSERT INTO cell_paints (region_key, cell_key, terrain_key, user_id) VALUES ($1, $2, $3, $4)',
+        [req.params.region, cellKey, terrainKey, req.user.id]
+      );
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Auth required: hard reset — deletes all paint history for the region
+app.delete('/api/terrain/:region', auth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM cell_paints WHERE region_key = $1', [req.params.region]);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

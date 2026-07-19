@@ -12,6 +12,138 @@ const TERRAINS = {
   Mountain: { color: '#b86820', icon: '🏔️' },
 };
 
+// ── Resource config ───────────────────────────────────────────────────────
+// stars: placeholder — update with actual game values (1–5 per location)
+const RESOURCE_TYPES = ['Ore', 'Stone', 'Wood', 'Raw Food'];
+
+const RESOURCES = {
+  // ── Ore ──────────────────────────────────────────────────────────────────
+  'Tin Ore':       { type: 'Ore',      icon: '⛏️',  info: 'Used in crafting bronze tools and alloys.',
+    locations: {
+      Flat:    [{ loc:'Plains',s:3},{loc:'Moorland',s:3},{loc:'Scrubland',s:3},{loc:'Swamp',s:3}],
+      Desert:  [{ loc:'Desert',s:3},{loc:'Salt Flats',s:3},{loc:'Plateau',s:3},{loc:'Savannah',s:3},{loc:'Dunes',s:3},{loc:'Scrubland',s:3},{loc:'Steppe',s:3}],
+      Wet:     [{ loc:'Delta',s:3},{loc:'Tundra',s:3},{loc:'Lake',s:3},{loc:'Moorland',s:3},{loc:'Bushes',s:3},{loc:'Swamp',s:3}],
+    }},
+  'Copper Ore':    { type: 'Ore',      icon: '⛏️',  info: 'Used for early tools, weapons and currency.',
+    locations: {
+      Arid:    [{ loc:'Prairie',s:3},{loc:'Savannah',s:3},{loc:'Steppe',s:3},{loc:'Dunes',s:3},{loc:'Salt Flats',s:3},{loc:'Canyon',s:3},{loc:'Rocks',s:3}],
+      Mountain:[{ loc:'Caves',s:3},{loc:'Peaks',s:3},{loc:'Rocks',s:3},{loc:'Canyon',s:3},{loc:'Extinct volcano',s:3},{loc:'Waterfall',s:3},{loc:'Mountain',s:3},{loc:'Plateau',s:3}],
+    }},
+  'Iron Ore':      { type: 'Ore',      icon: '⛏️',  info: 'Essential for crafting iron tools, weapons and armor.',
+    locations: {
+      Tropical:[{ loc:'Extinct volcano',s:3},{loc:'Bushes',s:3},{loc:'Lake',s:3}],
+      Cold:    [{ loc:'Arctic Tundra',s:3},{loc:'Glacier',s:3},{loc:'Mountain',s:3},{loc:'Tundra',s:3}],
+      Hill:    [{ loc:'Hills',s:3},{loc:'Rocky Plains',s:3},{loc:'Forested Hills',s:3},{loc:'River',s:3},{loc:'Waterfall',s:3}],
+    }},
+  // ── Stone ─────────────────────────────────────────────────────────────────
+  'Clay':          { type: 'Stone',    icon: '🏺',  info: 'Used for pottery, bricks and construction.',
+    locations: {
+      Flat:    [{ loc:'Plains',s:3},{loc:'Floodplains',s:3},{loc:'Moorland',s:3},{loc:'Swamp',s:3}],
+      Wet:     [{ loc:'Wetland',s:3},{loc:'Marsh',s:3},{loc:'Tundra',s:3},{loc:'Lake',s:3},{loc:'Moorland',s:3},{loc:'Swamp',s:3}],
+    }},
+  'Sandstone':     { type: 'Stone',    icon: '🪨',  info: 'A sedimentary rock used in arid region construction.',
+    locations: {
+      Arid:    [{ loc:'Prairie',s:3},{loc:'Volcano',s:3},{loc:'Savannah',s:3},{loc:'Dunes',s:3},{loc:'Salt Flats',s:3},{loc:'Canyon',s:3},{loc:'Rocks',s:3}],
+      Desert:  [{ loc:'Desert',s:3},{loc:'Salt Flats',s:3},{loc:'Plateau',s:3},{loc:'Savannah',s:3},{loc:'Dunes',s:3}],
+    }},
+  'Limestone':     { type: 'Stone',    icon: '🪨',  info: 'A common building material and source of lime for mortar.',
+    locations: {
+      Tropical:[{ loc:'Extinct volcano',s:3},{loc:'Forested Hills',s:3},{loc:'Lake',s:3}],
+      Cold:    [{ loc:'Arctic Tundra',s:3},{loc:'Glacier',s:3},{loc:'Mountain',s:3},{loc:'Marsh',s:3},{loc:'Tundra',s:3},{loc:'River',s:3}],
+    }},
+  'Granite':       { type: 'Stone',    icon: '🪨',  info: 'A hard igneous rock used in high-quality construction.',
+    locations: {
+      Hill:    [{ loc:'Hills',s:3},{loc:'Rocky Plains',s:3},{loc:'Forested Hills',s:3},{loc:'River',s:3},{loc:'Waterfall',s:3}],
+      Mountain:[{ loc:'Caves',s:3},{loc:'Peaks',s:3},{loc:'Rocks',s:3},{loc:'Canyon',s:3},{loc:'Extinct volcano',s:3},{loc:'Waterfall',s:3},{loc:'Mountain',s:3},{loc:'Plateau',s:3}],
+    }},
+  // ── Wood ──────────────────────────────────────────────────────────────────
+  'White Oak':     { type: 'Wood',     icon: '🌳',  info: 'A durable hardwood prized for furniture and shipbuilding.',
+    locations: {
+      Flat:    [{ loc:'Woods',s:3},{loc:'Moorland',s:3},{loc:'River',s:3},{loc:'Forest',s:3},{loc:'Scrubland',s:3},{loc:'Swamp',s:3}],
+    }},
+  'Rosewood':      { type: 'Wood',     icon: '🌲',  info: 'A fine, fragrant hardwood used in luxury goods.',
+    locations: {
+      Arid:    [{ loc:'Prairie',s:3},{loc:'Volcano',s:3},{loc:'Savannah',s:3}],
+    }},
+  'Palm Tree':     { type: 'Wood',     icon: '🌴',  info: 'Provides timber, fiber and food products.',
+    locations: {
+      Desert:  [{ loc:'Oasis',s:3},{loc:'Savannah',s:3},{loc:'Scrubland',s:3}],
+    }},
+  'Mahogany':      { type: 'Wood',     icon: '🌲',  info: 'A prized tropical hardwood used in fine furniture.',
+    locations: {
+      Tropical:[{ loc:'Rainforest',s:3},{loc:'Jungle',s:3},{loc:'Forested Hills',s:3},{loc:'River',s:3},{loc:'Forest',s:3},{loc:'Bushes',s:3}],
+    }},
+  'Maple':         { type: 'Wood',     icon: '🍁',  info: 'A hardwood also used for syrup and charcoal production.',
+    locations: {
+      Wet:     [{ loc:'Lake',s:3},{loc:'Moorland',s:3},{loc:'Bushes',s:3},{loc:'Swamp',s:3}],
+    }},
+  'Red Oak':       { type: 'Wood',     icon: '🌲',  info: 'A strong hardwood used in construction and barrels.',
+    locations: {
+      Cold:    [{ loc:'Dark Forest',s:3},{loc:'Mountain',s:3},{loc:'Taiga',s:3}],
+    }},
+  'Chestnut Wood': { type: 'Wood',     icon: '🌰',  info: 'Rot-resistant wood used for furniture and fencing.',
+    locations: {
+      Hill:    [{ loc:'Dark Forest',s:3},{loc:'Forested Hills',s:3},{loc:'Woods',s:3},{loc:'Waterfall',s:3},{loc:'Taiga',s:3}],
+    }},
+  'Pine':          { type: 'Wood',     icon: '🌲',  info: 'A versatile softwood used for construction and paper.',
+    locations: {
+      Mountain:[{ loc:'Extinct volcano',s:3},{loc:'Waterfall',s:3},{loc:'Mountain',s:3}],
+    }},
+  // ── Raw Food ──────────────────────────────────────────────────────────────
+  'Milk':          { type: 'Raw Food', icon: '🥛',  info: 'Produced by grazing cattle. Used in cheese and butter.',
+    locations: {
+      Flat:    [{ loc:'Plains',s:3},{loc:'Woods',s:3},{loc:'Moorland',s:3},{loc:'Forest',s:3}],
+    }},
+  'Rye':           { type: 'Raw Food', icon: '🌾',  info: 'A hardy grain used for bread and whiskey.',
+    locations: {
+      Flat:    [{ loc:'Floodplains',s:3},{loc:'River',s:3}],
+      Arid:    [{ loc:'Prairie',s:3},{loc:'Steppe',s:3}],
+    }},
+  'Maize':         { type: 'Raw Food', icon: '🌽',  info: 'A versatile crop used for flour, oil and animal feed.',
+    locations: {
+      Arid:    [{ loc:'Volcano',s:3},{loc:'Savannah',s:3}],
+    }},
+  'Chickpeas':     { type: 'Raw Food', icon: '🫘',  info: 'A protein-rich legume grown in dry climates.',
+    locations: {
+      Desert:  [{ loc:'Oasis',s:3}],
+    }},
+  'Pig':           { type: 'Raw Food', icon: '🐷',  info: 'Provides pork, lard and leather.',
+    locations: {
+      Desert:  [{ loc:'Plateau',s:3},{loc:'Savannah',s:3},{loc:'Steppe',s:3}],
+      Tropical:[{ loc:'Jungle',s:3},{loc:'Extinct volcano',s:3},{loc:'Forested Hills',s:3},{loc:'River',s:3},{loc:'Lake',s:3}],
+    }},
+  'Chicken':       { type: 'Raw Food', icon: '🐔',  info: 'Provides meat, eggs and feathers.',
+    locations: {
+      Tropical:[{ loc:'Rainforest',s:3},{loc:'Forest',s:3},{loc:'Bushes',s:3}],
+    }},
+  'Rice':          { type: 'Raw Food', icon: '🌾',  info: 'A staple grain requiring wet conditions.',
+    locations: {
+      Wet:     [{ loc:'Wetland',s:3},{loc:'Marsh',s:3},{loc:'Tundra',s:3},{loc:'Moorland',s:3}],
+    }},
+  'Trout':         { type: 'Raw Food', icon: '🐟',  info: 'A prized freshwater fish.',
+    locations: {
+      Wet:     [{ loc:'Delta',s:3},{loc:'Lake',s:3}],
+      Hill:    [{ loc:'River',s:3},{loc:'Waterfall',s:3}],
+    }},
+  'Barley':        { type: 'Raw Food', icon: '🌾',  info: 'A grain used for bread, beer and animal feed.',
+    locations: {
+      Cold:    [{ loc:'Arctic Tundra',s:3},{loc:'Dark Forest',s:3},{loc:'Tundra',s:3},{loc:'Taiga',s:3}],
+    }},
+  'Salmon':        { type: 'Raw Food', icon: '🐟',  info: 'A prized fish from cold, fast-moving waters.',
+    locations: {
+      Cold:    [{ loc:'Marsh',s:3},{loc:'River',s:3}],
+      Mountain:[{ loc:'Waterfall',s:3}],
+    }},
+  'Grapes':        { type: 'Raw Food', icon: '🍇',  info: 'Used for wine, raisins and fresh eating.',
+    locations: {
+      Hill:    [{ loc:'Hills',s:3},{loc:'Rocky Plains',s:3},{loc:'Dark Forest',s:3},{loc:'Forested Hills',s:3},{loc:'Woods',s:3},{loc:'Taiga',s:3}],
+    }},
+  'Potatoes':      { type: 'Raw Food', icon: '🥔',  info: 'A versatile root vegetable for cold climates.',
+    locations: {
+      Mountain:[{ loc:'Extinct volcano',s:3},{loc:'Mountain',s:3},{loc:'Plateau',s:3}],
+    }},
+};
+
 // ── Country config ────────────────────────────────────────────────────────
 const COUNTRIES = {
   'Netherlands':    { center: [52.3,  5.3], zoom: 8, latMin: 50.7, latMax: 53.6, lngMin:  3.3, lngMax:  7.3 },
@@ -91,12 +223,19 @@ const US_STATES = {
 
 const STEP = 0.1;
 
-// ── API client ────────────────────────────────────────────────────────────
-function debounce(fn, ms) {
-  let timer;
-  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+// ── Auth ──────────────────────────────────────────────────────────────────
+const getToken  = ()  => localStorage.getItem('auth-token');
+const setToken  = (t) => localStorage.setItem('auth-token', t);
+const clearToken = () => localStorage.removeItem('auth-token');
+
+function authHeaders(extra = {}) {
+  const h = { 'Content-Type': 'application/json', ...extra };
+  const t = getToken();
+  if (t) h['Authorization'] = `Bearer ${t}`;
+  return h;
 }
 
+// ── API client ────────────────────────────────────────────────────────────
 const api = {
   async load(region) {
     try {
@@ -105,23 +244,33 @@ const api = {
       return (await res.json()).data || {};
     } catch { return {}; }
   },
-  save: debounce(async (region, data) => {
+  async paintCell(region, cellKey, terrainKey) {
     try {
-      await fetch(`/api/terrain/${region}`, {
+      await fetch(`/api/terrain/${region}/cell`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
+        body: JSON.stringify({ cellKey, terrainKey: terrainKey || null }),
+      });
+    } catch {}
+  },
+  async importData(region, data) {
+    try {
+      await fetch(`/api/terrain/${region}/import`, {
+        method: 'POST',
+        headers: authHeaders(),
         body: JSON.stringify({ data }),
       });
     } catch {}
-  }, 600),
+  },
   async remove(region) {
     try {
-      await fetch(`/api/terrain/${region}`, { method: 'DELETE' });
+      await fetch(`/api/terrain/${region}`, { method: 'DELETE', headers: authHeaders() });
     } catch {}
   },
 };
 
 // ── State ─────────────────────────────────────────────────────────────────
+let currentUser    = null;
 let activeTerrain  = null;
 let isDragging     = false;
 let currentCountry = localStorage.getItem('selected-country') || 'Netherlands';
@@ -244,6 +393,7 @@ async function loadCurrentRegion() {
 
 // ── Paint ─────────────────────────────────────────────────────────────────
 function paintCell(key, terrainKey) {
+  if (!currentUser) { showModal(); return; }
   const rect = cells[key];
   if (!rect) return;
 
@@ -268,7 +418,7 @@ function paintCell(key, terrainKey) {
     markers[key] = m;
   }
 
-  api.save(activeRegionKey(), cellState);
+  api.paintCell(activeRegionKey(), key, terrainKey || null);
 }
 
 // ── Sidebar: Country selector ─────────────────────────────────────────────
@@ -431,7 +581,7 @@ importInput.addEventListener('change', (e) => {
       Object.values(markers).forEach(m => m.remove());
       for (const k in markers) delete markers[k];
       cellState = data;
-      api.save(activeRegionKey(), cellState);
+      api.importData(activeRegionKey(), data);
       Object.entries(cells).forEach(([key, rect]) => {
         const terrain = cellState[key] || null;
         rect.setStyle(styleFor(terrain));
@@ -465,5 +615,192 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   for (const k in markers) delete markers[k];
 });
 
+// ── Auth UI ───────────────────────────────────────────────────────────────
+const authOverlay = document.getElementById('auth-overlay');
+const authError   = document.getElementById('auth-error');
+
+function showModal() { authOverlay.classList.remove('hidden'); }
+function hideModal() { authOverlay.classList.add('hidden'); }
+
+function onLoggedIn(user) {
+  currentUser = user;
+  hideModal();
+  document.getElementById('login-btn').style.display      = 'none';
+  document.getElementById('username-display').textContent = `⚔ ${user.username}`;
+  document.getElementById('username-display').style.display = '';
+  document.getElementById('logout-btn').style.display     = '';
+}
+
+function onLoggedOut() {
+  currentUser = null;
+  document.getElementById('login-btn').style.display      = '';
+  document.getElementById('username-display').style.display = 'none';
+  document.getElementById('logout-btn').style.display     = 'none';
+}
+
+// Tab switching
+document.querySelectorAll('.auth-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const which = tab.dataset.tab;
+    document.getElementById('login-form').style.display    = which === 'login'    ? 'flex' : 'none';
+    document.getElementById('register-form').style.display = which === 'register' ? 'flex' : 'none';
+    authError.textContent = '';
+  });
+});
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  authError.textContent = '';
+  const { email, password } = e.target;
+  const res  = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.value, password: password.value }),
+  });
+  const data = await res.json();
+  if (!res.ok) { authError.textContent = data.error; return; }
+  setToken(data.token);
+  onLoggedIn(data.user);
+});
+
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  authError.textContent = '';
+  const { username, email, password } = e.target;
+  const res  = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username.value, email: email.value, password: password.value }),
+  });
+  const data = await res.json();
+  if (!res.ok) { authError.textContent = data.error; return; }
+  setToken(data.token);
+  onLoggedIn(data.user);
+});
+
+document.getElementById('login-btn').addEventListener('click', showModal);
+document.getElementById('modal-close').addEventListener('click', hideModal);
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  clearToken();
+  onLoggedOut();
+});
+
+// ── Resource Lookup modal ─────────────────────────────────────────────────
+const resOverlay = document.getElementById('resource-overlay');
+const resTypeEl  = document.getElementById('res-type');
+const resNameEl  = document.getElementById('res-name');
+let resMinStars  = 0;
+
+document.getElementById('resource-btn').addEventListener('click', () => {
+  resOverlay.classList.remove('hidden');
+  renderResources();
+});
+document.getElementById('resource-close').addEventListener('click', () => resOverlay.classList.add('hidden'));
+resOverlay.addEventListener('click', (e) => { if (e.target === resOverlay) resOverlay.classList.add('hidden'); });
+
+function populateResNames() {
+  const type = resTypeEl.value;
+  resNameEl.innerHTML = '<option value="">All Resources</option>';
+  Object.entries(RESOURCES)
+    .filter(([, r]) => !type || r.type === type)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .forEach(([name]) => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      resNameEl.appendChild(opt);
+    });
+  renderResources();
+}
+
+resTypeEl.addEventListener('change', populateResNames);
+resNameEl.addEventListener('change', renderResources);
+
+document.querySelectorAll('.res-star-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.res-star-opt').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    resMinStars = parseInt(btn.dataset.val);
+    renderResources();
+  });
+});
+
+function starsEl(n) {
+  return `<span class="res-loc-stars">${'★'.repeat(n)}<span class="res-star-empty">${'☆'.repeat(5 - n)}</span></span>`;
+}
+
+function renderResources() {
+  const type    = resTypeEl.value;
+  const name    = resNameEl.value;
+  const minS    = resMinStars;
+  const out     = document.getElementById('resource-results');
+  out.innerHTML = '';
+
+  const entries = Object.entries(RESOURCES)
+    .filter(([rn, r]) => (!type || r.type === type) && (!name || rn === name));
+
+  for (const [rName, r] of entries) {
+    const terrainMatches = [];
+    for (const [terrain, locs] of Object.entries(r.locations)) {
+      const filtered = locs.filter(l => l.s >= minS);
+      if (filtered.length) terrainMatches.push({ terrain, locs: filtered });
+    }
+    if (!terrainMatches.length) continue;
+
+    const section = document.createElement('div');
+    section.className = 'res-section';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'res-section-header';
+    hdr.innerHTML = `
+      <span class="res-section-name">${r.icon} ${rName}</span>
+      <span class="res-type-badge">${r.type}</span>
+      <button class="res-info-btn">ⓘ</button>`;
+    section.appendChild(hdr);
+
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'res-info-text hidden';
+    infoDiv.textContent = r.info;
+    section.appendChild(infoDiv);
+
+    hdr.querySelector('.res-info-btn').addEventListener('click', () => infoDiv.classList.toggle('hidden'));
+
+    for (const { terrain, locs } of terrainMatches) {
+      const color = TERRAINS[terrain]?.color || '#888';
+      const tEl = document.createElement('div');
+      tEl.className = 'res-terrain';
+      tEl.innerHTML = `<div class="res-terrain-label"><span class="swatch" style="background:${color};width:9px;height:9px;border-radius:2px"></span>${terrain}</div>`;
+      for (const l of locs) {
+        const row = document.createElement('div');
+        row.className = 'res-loc';
+        row.innerHTML = `${starsEl(l.s)}<span>${l.loc}</span>`;
+        tEl.appendChild(row);
+      }
+      section.appendChild(tEl);
+    }
+
+    out.appendChild(section);
+  }
+
+  if (!out.children.length) {
+    out.innerHTML = '<div class="res-empty">No resources match the selected filters.</div>';
+  }
+}
+
+populateResNames();
+
 // ── Init ──────────────────────────────────────────────────────────────────
-loadCurrentRegion();
+(async () => {
+  await loadCurrentRegion();
+
+  const token = getToken();
+  if (!token) { onLoggedOut(); return; }
+  try {
+    const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.ok) { onLoggedIn((await res.json()).user); return; }
+  } catch {}
+  clearToken();
+  onLoggedOut();
+})();
