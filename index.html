@@ -129,10 +129,11 @@
 
       <div class="divider" style="margin-top:10px"></div>
       <div class="mf-label" style="margin-bottom:5px">Settlements</div>
-      <div id="settle-stage-filters" class="mf-dots" style="margin-bottom:4px"></div>
+      <div id="settle-stage-filters" class="mf-type-row"></div>
       <label class="mf-own-toggle">
         <input type="checkbox" id="settle-own-only" disabled />
-        <span>My settlements only</span>
+        <span class="mf-switch"></span>
+        <span>Hide others</span>
       </label>
     </section>
 
@@ -162,15 +163,12 @@
       </div>
 
       <div id="settle-marker-tab" style="display:none">
-        <div class="settle-field">
-          <label class="settle-label">Product</label>
-          <div id="settle-resource-wrap" class="res-dd-wrap"></div>
+        <div id="settle-resource-wrap" class="res-dd-wrap" style="margin-bottom:7px"></div>
+        <div class="type-btn-group" id="settle-stage-group"></div>
+        <div class="type-btn-group" id="settle-vis-group">
+          <button class="type-btn" data-vis="public">🔓 Public</button>
+          <button class="type-btn active" data-vis="private">🔒 Private</button>
         </div>
-        <div class="settle-field">
-          <label class="settle-label">Stage</label>
-          <div id="settle-stage-wrap" class="res-dd-wrap"></div>
-        </div>
-        <input id="settle-name-input" class="auth-input settle-name-input" type="text" placeholder="Name (optional)…" autocomplete="off" />
         <button id="settle-place-btn" class="action-btn settle-place-btn">⚑ Place Settlement</button>
       </div>
     </section>
@@ -192,6 +190,27 @@
   <button id="settle-cancel-place">✕ Cancel</button>
 </div>
 
+<!-- ── Tribe edit modal ──────────────────────────────────────────────── -->
+<div id="tribe-edit-overlay" class="hidden">
+  <div id="tribe-edit-modal">
+    <button id="tribe-edit-close">✕</button>
+    <div class="header-ornament">⸻</div>
+    <h3 class="settle-modal-title">Edit Tribe Marker</h3>
+    <div class="header-ornament">⸻</div>
+    <div id="tribe-edit-dd-wrap" class="res-dd-wrap" style="margin-bottom:10px"></div>
+    <div class="type-btn-group" id="tribe-edit-type-group">
+      <button class="type-btn" data-type="Camp">🏕 Camp</button>
+      <button class="type-btn" data-type="Selo">🏘 Selo</button>
+      <button class="type-btn" data-type="Burgh">🏰 Burgh</button>
+    </div>
+    <div class="settle-modal-btns">
+      <button id="tribe-save-btn" class="auth-submit">Save Changes</button>
+      <button id="tribe-modal-cancel" class="auth-submit settle-secondary-btn">Cancel</button>
+    </div>
+    <p id="tribe-edit-error"></p>
+  </div>
+</div>
+
 <!-- ── Settlement edit modal ─────────────────────────────────────────── -->
 <div id="settle-edit-overlay" class="hidden">
   <div id="settle-edit-modal">
@@ -208,6 +227,10 @@
       <div id="settle-edit-stage-wrap" class="res-dd-wrap"></div>
     </div>
     <input id="settle-edit-name" class="auth-input" type="text" placeholder="Name (optional)…" autocomplete="off" />
+    <div class="type-btn-group" id="settle-edit-vis-group" style="margin:10px 0 4px">
+      <button class="type-btn active" data-vis="public">🔓 Public</button>
+      <button class="type-btn" data-vis="private">🔒 Private</button>
+    </div>
     <div class="settle-modal-btns">
       <button id="settle-save-btn" class="auth-submit">Save Changes</button>
       <button id="settle-modal-cancel" class="auth-submit settle-secondary-btn">Cancel</button>

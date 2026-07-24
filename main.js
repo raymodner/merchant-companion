@@ -262,7 +262,7 @@ function initTerrainUI() {
     row.className = 'filter-row visible';
     row.innerHTML = `<div class="swatch" style="background:${t.color};width:10px;height:10px"></div>
                      <div class="filter-check">✓</div>
-                     <span class="terrain-label" style="font-size:13px">${t.icon} ${key}</span>`;
+                     <span class="terrain-label">${t.icon} ${key}</span>`;
     row.addEventListener('click', () => toggleFilter(key));
     filterRows[key] = row;
     filterList.appendChild(row);
@@ -787,7 +787,9 @@ let activeTribeId   = null;
 let activeTribeType = 'Camp';
 let tribePlaceMode  = false;
 const tribeMarkers  = {}; // id → { marker, data }
-let tribeDd;
+let tribeDd, tribeEditDd;
+let tribeEditId   = null;
+let tribeEditType = 'Camp';
 
 // Filter state
 const hiddenTribes     = new Set(); // tribe_id (int)
@@ -811,7 +813,10 @@ function makeTribeIcon(color, type) {
 function tribePopupHtml(m) {
   const isOwn = currentUser && currentUser.id === parseInt(m.placed_by);
   const btns  = isOwn
-    ? `<div class="sp-btns"><button class="sp-btn sp-del-btn">✕ Delete</button></div>`
+    ? `<div class="sp-btns">
+         <button class="sp-btn sp-edit-btn">✎ Edit</button>
+         <button class="sp-btn sp-del-btn">✕ Delete</button>
+       </div>`
     : '';
   return `<div class="sp-body">
     <div class="sp-tribe">
@@ -833,6 +838,10 @@ function placeTribeMarker(m) {
   marker.on('popupopen', () => {
     const el = marker.getPopup()?.getElement();
     if (!el) return;
+    el.querySelector('.sp-edit-btn')?.addEventListener('click', () => {
+      marker.closePopup();
+      openTribeEditModal(m.id);
+    });
     el.querySelector('.sp-del-btn')?.addEventListener('click', function () {
       if (this.dataset.confirm !== '1') {
         this.dataset.confirm = '1';
@@ -857,7 +866,8 @@ async function deleteTribeMarker(id, marker) {
 }
 
 async function loadTribeMarkers(regionKey) {
-  const res = await fetch(`/api/tribe-markers?region=${encodeURIComponent(regionKey)}`).catch(() => null);
+  if (!currentUser) return;
+  const res = await fetch(`/api/tribe-markers?region=${encodeURIComponent(regionKey)}`, { credentials: 'include' }).catch(() => null);
   if (!res?.ok) return;
   const { markers } = await res.json();
   for (const m of (markers || [])) placeTribeMarker(m);
@@ -941,7 +951,9 @@ let settleResource   = '';
 let settlePlaceMode  = false;
 let settleEditId     = null;
 const playerSettlements = {}; // id → { marker, data }
-let settleResourceDd, settleStageDd, settleEditResourceDd, settleEditStageDd;
+let settleIsPublic    = false;
+let settleEditIsPublic = false;
+let settleResourceDd, settleEditResourceDd, settleEditStageDd;
 
 const TYPE_ICONS = {
   'Ore': '⛏', 'Stone': '🪨', 'Wood': '🌲', 'Raw Food': '🌾',
@@ -966,10 +978,13 @@ function makeSettlementIcon(tier, stageIcon) {
 }
 
 function settlementPopupHtml(s) {
-  const isOwn   = currentUser && currentUser.id === parseInt(s.user_id);
+  const isOwn    = currentUser && currentUser.id === parseInt(s.user_id);
   const nameLine = s.name ? `<div class="sp-name">${s.name}</div>` : '';
   const resLine  = s.resource_type
     ? `<div class="sp-stage">${typeIcon(s.resource_type)} ${s.resource_type}</div>`
+    : '';
+  const visLine  = isOwn
+    ? `<div class="sp-stage">${s.is_public ? '🔓 Public' : '🔒 Private'}</div>`
     : '';
   const btns = isOwn
     ? `<div class="sp-btns">
@@ -982,6 +997,7 @@ function settlementPopupHtml(s) {
     <div class="sp-stage">${s.stage_icon} ${s.stage_name}</div>
     ${resLine}
     ${nameLine}
+    ${visLine}
     <div class="sp-owner">by ${s.username}</div>
     ${btns}
   </div>`;
@@ -1080,6 +1096,25 @@ function setSettlePlaceMode(on) {
 }
 
 
+function openTribeEditModal(id) {
+  const entry = tribeMarkers[id];
+  if (!entry) return;
+  const m = entry.data;
+  tribeEditId   = id;
+  tribeEditType = m.type;
+  tribeEditDd.setValue(String(m.tribe_id));
+  document.querySelectorAll('#tribe-edit-type-group .type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === m.type);
+  });
+  document.getElementById('tribe-edit-error').textContent = '';
+  document.getElementById('tribe-edit-overlay').classList.remove('hidden');
+}
+
+function closeTribeEditModal() {
+  document.getElementById('tribe-edit-overlay').classList.add('hidden');
+  tribeEditId = null;
+}
+
 function initMarkerUI() {
   // ── Tribe tab ─────────────────────────────────────────────────────
   tribeDd = makeDropdown(
@@ -1090,9 +1125,9 @@ function initMarkerUI() {
   );
   if (TRIBES.length) activeTribeId = TRIBES[0].id;
 
-  document.querySelectorAll('.type-btn').forEach(btn => {
+  document.querySelectorAll('#tribe-type-group .type-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#tribe-type-group .type-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeTribeType = btn.dataset.type;
     });
@@ -1101,6 +1136,52 @@ function initMarkerUI() {
   document.getElementById('tribe-place-btn').addEventListener('click', () => {
     if (!currentUser) { showModal(); return; }
     setTribePlaceMode(!tribePlaceMode);
+  });
+
+  // ── Tribe edit modal ──────────────────────────────────────────────
+  tribeEditDd = makeDropdown(
+    document.getElementById('tribe-edit-dd-wrap'),
+    TRIBES.map(t => ({ value: String(t.id), label: `${t.icon} ${t.name}` })),
+    () => {},
+    'sidebar'
+  );
+
+  document.querySelectorAll('#tribe-edit-type-group .type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#tribe-edit-type-group .type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      tribeEditType = btn.dataset.type;
+    });
+  });
+
+  document.getElementById('tribe-edit-close').addEventListener('click', closeTribeEditModal);
+  document.getElementById('tribe-modal-cancel').addEventListener('click', closeTribeEditModal);
+  document.getElementById('tribe-edit-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'tribe-edit-overlay') closeTribeEditModal();
+  });
+
+  document.getElementById('tribe-save-btn').addEventListener('click', async () => {
+    if (!tribeEditId) return;
+    const tribeId = parseInt(tribeEditDd.getValue());
+    const errEl   = document.getElementById('tribe-edit-error');
+
+    const res = await fetch(`/api/tribe-markers/${tribeEditId}`, {
+      method: 'PATCH',
+      headers: jsonHeaders,
+      credentials: 'include',
+      body: JSON.stringify({ tribe_id: tribeId, type: tribeEditType }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; return; }
+
+    const entry = tribeMarkers[tribeEditId];
+    if (entry) {
+      const tribe = TRIBES.find(t => t.id === tribeId);
+      entry.data = { ...entry.data, tribe_id: tribeId, tribe_name: tribe?.name, tribe_color: tribe?.color, tribe_icon: tribe?.icon, type: tribeEditType };
+      entry.marker.setIcon(makeTribeIcon(entry.data.tribe_color, tribeEditType));
+      entry.marker.getPopup()?.setContent(tribePopupHtml(entry.data));
+    }
+    closeTribeEditModal();
   });
 
   // ── Settlement tab ────────────────────────────────────────────────
@@ -1115,13 +1196,39 @@ function initMarkerUI() {
     'sidebar'
   );
 
-  settleStageDd = makeDropdown(
-    document.getElementById('settle-stage-wrap'),
-    STAGES.map(s => ({ value: String(s.id), label: `${s.icon} ${s.name}` })),
-    (v) => { settleStageId = parseInt(v); },
-    'sidebar'
-  );
-  if (STAGES.length) settleStageId = STAGES[0].id;
+  const settleStageGroup = document.getElementById('settle-stage-group');
+  for (const s of STAGES) {
+    const btn = document.createElement('button');
+    btn.className = 'type-btn';
+    btn.dataset.stageId = String(s.id);
+    btn.textContent = `${s.icon} ${s.name}`;
+    btn.addEventListener('click', () => {
+      settleStageGroup.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      settleStageId = parseInt(s.id);
+    });
+    settleStageGroup.appendChild(btn);
+  }
+  if (STAGES.length) {
+    settleStageGroup.querySelector('.type-btn')?.classList.add('active');
+    settleStageId = STAGES[0].id;
+  }
+
+  document.querySelectorAll('#settle-vis-group .type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#settle-vis-group .type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      settleIsPublic = btn.dataset.vis === 'public';
+    });
+  });
+
+  document.querySelectorAll('#settle-edit-vis-group .type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#settle-edit-vis-group .type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      settleEditIsPublic = btn.dataset.vis === 'public';
+    });
+  });
 
   settleEditResourceDd = makeDropdown(
     document.getElementById('settle-edit-resource-wrap'),
@@ -1188,17 +1295,16 @@ function initMarkerUI() {
   // ── Settlement filters ────────────────────────────────────────────
   const stageFilters = document.getElementById('settle-stage-filters');
   for (const s of STAGES) {
-    const dot = document.createElement('span');
-    dot.className = 'mf-dot mf-stage-dot';
-    dot.textContent = s.icon;
-    dot.title = s.name;
-    dot.addEventListener('click', () => {
+    const btn = document.createElement('button');
+    btn.className = 'mf-type-btn';
+    btn.textContent = `${s.icon} ${s.name}`;
+    btn.addEventListener('click', () => {
       const id = parseInt(s.id);
-      if (hiddenStages.has(id)) { hiddenStages.delete(id); dot.classList.remove('filtered-out'); }
-      else                       { hiddenStages.add(id);    dot.classList.add('filtered-out');    }
+      if (hiddenStages.has(id)) { hiddenStages.delete(id); btn.classList.remove('filtered-out'); }
+      else                       { hiddenStages.add(id);    btn.classList.add('filtered-out');    }
       applySettlementFilters();
     });
-    stageFilters.appendChild(dot);
+    stageFilters.appendChild(btn);
   }
 
   const ownOnlyChk = document.getElementById('settle-own-only');
@@ -1231,7 +1337,7 @@ function initMarkerUI() {
       method: 'PATCH',
       headers: jsonHeaders,
       credentials: 'include',
-      body: JSON.stringify({ stage_id: stageId, resource_type: resourceType || null, name: name || null }),
+      body: JSON.stringify({ stage_id: stageId, resource_type: resourceType || null, name: name || null, is_public: settleEditIsPublic }),
     });
     const data = await res.json();
     if (!res.ok) { errEl.textContent = data.error; return; }
@@ -1256,10 +1362,14 @@ function openSettleEditModal(id) {
   if (!entry) return;
   const s = entry.data;
   settleEditId = id;
+  settleEditIsPublic = s.is_public !== false;
   settleEditStageDd.setValue(String(s.stage_id));
   settleEditResourceDd.setValue(s.resource_type || '');
   document.getElementById('settle-edit-name').value = s.name || '';
   document.getElementById('settle-edit-error').textContent = '';
+  document.querySelectorAll('#settle-edit-vis-group .type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.vis === (settleEditIsPublic ? 'public' : 'private'));
+  });
   document.getElementById('settle-edit-overlay').classList.remove('hidden');
 }
 
@@ -1294,12 +1404,11 @@ map.on('click', async (e) => {
 
   if (settlePlaceMode) {
     if (!currentUser) { setSettlePlaceMode(false); showModal(); return; }
-    const name = document.getElementById('settle-name-input')?.value.trim() || null;
     const postRes = await fetch('/api/player-settlements', {
       method: 'POST',
       headers: jsonHeaders,
       credentials: 'include',
-      body: JSON.stringify({ stage_id: settleStageId, resource_type: settleResource || null, region_key: activeRegionKey(), lat, lng, name }),
+      body: JSON.stringify({ stage_id: settleStageId, resource_type: settleResource || null, region_key: activeRegionKey(), lat, lng, is_public: settleIsPublic }),
     });
     if (!postRes.ok) return;
     const { id } = await postRes.json();
@@ -1309,8 +1418,6 @@ map.on('click', async (e) => {
       const s = settlements.find(x => x.id === id);
       if (s) { placePlayerSettlement(s); applySettlementFilters(); setTimeout(() => playerSettlements[id]?.marker.openPopup(), 50); }
     }
-    const nameInput = document.getElementById('settle-name-input');
-    if (nameInput) nameInput.value = '';
     setSettlePlaceMode(false);
   }
 });

@@ -142,3 +142,5 @@ CREATE TABLE IF NOT EXISTS player_settlements (
 );
 
 CREATE INDEX IF NOT EXISTS player_settlements_region ON player_settlements (region_key);
+
+ALTER TABLE player_settlements ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;

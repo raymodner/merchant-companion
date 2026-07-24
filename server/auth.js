@@ -12,3 +12,11 @@ export function auth(req, res, next) {
     res.status(401).json({ error: 'Invalid token' });
   }
 }
+
+export function optionalAuth(req, res, next) {
+  const token = req.cookies?.token;
+  if (token) {
+    try { req.user = jwt.verify(token, secret()); } catch {}
+  }
+  next();
+}
