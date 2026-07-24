@@ -282,6 +282,7 @@ function setPaintMode(on) {
   paintModeBtn.classList.toggle('active', on);
   paintModeBtn.textContent = on ? '🖌 Painting On' : '🖌 Start Painting';
   document.getElementById('map').classList.toggle('paint-cursor', on);
+  if (on) closeSidebar();
 }
 
 paintModeBtn.addEventListener('click', () => setPaintMode(!paintMode));
@@ -472,6 +473,24 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
 
 document.getElementById('login-btn').addEventListener('click', showModal);
 document.getElementById('modal-close').addEventListener('click', hideModal);
+
+// ── Mobile sidebar ────────────────────────────────────────────────────────
+const menuBtn         = document.getElementById('menu-btn');
+const sidebarEl       = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+function openSidebar() {
+  sidebarEl.classList.add('open');
+  sidebarBackdrop.classList.add('visible');
+  menuBtn.textContent = '✕';
+}
+function closeSidebar() {
+  sidebarEl.classList.remove('open');
+  sidebarBackdrop.classList.remove('visible');
+  menuBtn.textContent = '☰';
+}
+menuBtn.addEventListener('click', () => sidebarEl.classList.contains('open') ? closeSidebar() : openSidebar());
+sidebarBackdrop.addEventListener('click', closeSidebar);
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
@@ -941,7 +960,7 @@ function setTribePlaceMode(on) {
   const btn = document.getElementById('tribe-place-btn');
   btn.classList.toggle('active', on);
   btn.textContent = on ? '⚔ Placing… (Esc to cancel)' : '⚔ Mark Location';
-  if (on) { setPaintMode(false); setSettlePlaceMode(false); }
+  if (on) { setPaintMode(false); setSettlePlaceMode(false); closeSidebar(); }
 }
 
 // ── Player settlements ────────────────────────────────────────────────────
@@ -1092,7 +1111,7 @@ function setSettlePlaceMode(on) {
   const btn = document.getElementById('settle-place-btn');
   btn.classList.toggle('active', on);
   btn.textContent = on ? '⚑ Placing… (Esc to cancel)' : '⚑ Place Settlement';
-  if (on) { setPaintMode(false); setTribePlaceMode(false); }
+  if (on) { setPaintMode(false); setTribePlaceMode(false); closeSidebar(); }
 }
 
 
