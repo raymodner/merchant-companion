@@ -1,0 +1,25 @@
+{
+  "name": "merchant-companion-api",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push"
+  },
+  "devEngines": { "packageManager": { "name": "pnpm", "version": "^11" } },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma"]
+  },
+  "dependencies": {
+    "@prisma/client": "^6",
+    "bcryptjs": "^3",
+    "cookie-parser": "^1.4",
+    "cors": "^2.8",
+    "dotenv": "^17",
+    "express": "^5",
+    "jsonwebtoken": "^9",
+    "prisma": "^6"
+  }
+}

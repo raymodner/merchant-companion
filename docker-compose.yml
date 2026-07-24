@@ -23,16 +23,12 @@ services:
 
   api:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: terrain_api
     restart: unless-stopped
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       PORT: 3001
       NODE_ENV: ${NODE_ENV:-development}
       JWT_SECRET: ${JWT_SECRET}
@@ -42,13 +38,13 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - .:/app
+      - ./backend:/app
       - /app/node_modules
 
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: terrain_frontend
     restart: unless-stopped
     environment:
@@ -58,7 +54,7 @@ services:
     depends_on:
       - api
     volumes:
-      - .:/app
+      - ./frontend:/app
       - /app/node_modules
 
 volumes:

@@ -1,0 +1,23 @@
+{
+  "name": "merchant-companion-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devEngines": { "packageManager": { "name": "pnpm", "version": "^11" } },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "dependencies": {
+    "leaflet": "^1.9",
+    "pinia": "^3",
+    "vue": "^3.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5",
+    "vite": "^6"
+  }
+}

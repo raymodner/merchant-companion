@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int      @id @default(autoincrement())
+  username         String   @unique @db.VarChar(50)
+  email            String   @unique @db.VarChar(255)
+  password         String   @db.VarChar(255)
+  preferredCountry String?  @map("preferred_country") @db.VarChar(100)
+  preferredState   String?  @map("preferred_state") @db.VarChar(100)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  cellPaints        CellPaint[]
+  tribeMarkers      TribeMarker[]
+  playerSettlements PlayerSettlement[]
+
+  @@map("users")
+}
+
+model CellPaint {
+  id         Int      @id @default(autoincrement())
+  regionKey  String   @map("region_key") @db.VarChar(100)
+  cellKey    String   @map("cell_key") @db.VarChar(50)
+  terrainKey String?  @map("terrain_key") @db.VarChar(50)
+  userId     Int?     @map("user_id")
+  paintedAt  DateTime @default(now()) @map("painted_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([regionKey, cellKey, paintedAt(sort: Desc)], name: "cell_paints_lookup")
+  @@map("cell_paints")
+}
+
+model Resource {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique @db.VarChar(100)
+  type      String  @db.VarChar(20)
+  icon      String? @db.VarChar(20)
+  info      String?
+  available Boolean @default(true)
+
+  locations ResourceLocation[]
+  chain     ProductionChain?
+
+  @@map("resources")
+}
+
+model Terrain {
+  id    Int    @id @default(autoincrement())
+  name  String @unique @db.VarChar(50)
+  color String @db.VarChar(20)
+  icon  String @db.VarChar(10)
+
+  resourceLocations ResourceLocation[]
+
+  @@map("terrains")
+}
+
+model ResourceLocation {
+  id         Int    @id @default(autoincrement())
+  resourceId Int    @map("resource_id")
+  terrain    String @db.VarChar(50)
+  location   String @db.VarChar(100)
+  stars      Int    @default(0) @db.SmallInt
+
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  terrainRef Terrain  @relation(fields: [terrain], references: [name])
+
+  @@unique([resourceId, terrain, location])
+  @@map("resource_locations")
+}
+
+model ProductionChain {
+  id             Int     @id @default(autoincrement())
+  resourceId     Int     @unique @map("resource_id")
+  processedName  String  @map("processed_name") @db.VarChar(100)
+  final1Name     String? @map("final1_name") @db.VarChar(100)
+  final1Category String? @map("final1_category") @db.VarChar(30)
+  final2Name     String? @map("final2_name") @db.VarChar(100)
+  final2Category String? @map("final2_category") @db.VarChar(30)
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@map("production_chain")
+}
+
+model MapRegion {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  parent    String   @default("") @db.VarChar(100)
+  latMin    Decimal  @map("lat_min") @db.Decimal(7, 4)
+  latMax    Decimal  @map("lat_max") @db.Decimal(7, 4)
+  lngMin    Decimal  @map("lng_min") @db.Decimal(8, 4)
+  lngMax    Decimal  @map("lng_max") @db.Decimal(8, 4)
+  centerLat Decimal? @map("center_lat") @db.Decimal(7, 4)
+  centerLng Decimal? @map("center_lng") @db.Decimal(8, 4)
+  zoom      Int?     @db.SmallInt
+
+  @@unique([name, parent])
+  @@map("map_regions")
+}
+
+model Tribe {
+  id      Int    @id @default(autoincrement())
+  name    String @unique @db.VarChar(100)
+  color   String @db.VarChar(20)
+  icon    String @db.VarChar(10)
+
+  markers TribeMarker[]
+
+  @@map("tribes")
+}
+
+model TribeMarker {
+  id        Int      @id @default(autoincrement())
+  placedBy  Int      @map("placed_by")
+  tribeId   Int      @map("tribe_id")
+  type      String   @db.VarChar(10)
+  regionKey String   @map("region_key") @db.VarChar(100)
+  lat       Decimal  @db.Decimal(9, 6)
+  lng       Decimal  @db.Decimal(9, 6)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [placedBy], references: [id], onDelete: Cascade)
+  tribe Tribe @relation(fields: [tribeId], references: [id])
+
+  @@index([regionKey], name: "tribe_markers_region")
+  @@map("tribe_markers")
+}
+
+model SettlementStage {
+  id        Int    @id @default(autoincrement())
+  name      String @unique @db.VarChar(100)
+  sortOrder Int    @default(0) @map("sort_order")
+  tier      Int    @default(1) @db.SmallInt
+  icon      String @db.VarChar(10)
+
+  settlements PlayerSettlement[]
+
+  @@map("settlement_stages")
+}
+
+model PlayerSettlement {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  resourceType String?  @map("resource_type") @db.VarChar(100)
+  stageId      Int      @map("stage_id")
+  regionKey    String   @map("region_key") @db.VarChar(100)
+  lat          Decimal  @db.Decimal(9, 6)
+  lng          Decimal  @db.Decimal(9, 6)
+  name         String?  @db.VarChar(200)
+  createdAt    DateTime @default(now()) @map("created_at")
+  isPublic     Boolean  @default(false) @map("is_public")
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stage SettlementStage @relation(fields: [stageId], references: [id])
+
+  @@index([regionKey], name: "player_settlements_region")
+  @@map("player_settlements")
+}
