@@ -6,6 +6,12 @@ import { auth } from '../auth.js';
 
 const router = Router();
 const secret = () => process.env.JWT_SECRET;
+const COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: process.env.NODE_ENV === 'production',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
 
 const PUBLIC_FIELDS = 'id, username, email, preferred_country, preferred_state';
 
@@ -20,7 +26,7 @@ router.post('/register', async (req, res) => {
       [username, email, hash]
     );
     const token = jwt.sign({ id: rows[0].id, username: rows[0].username }, secret(), { expiresIn: '7d' });
-    res.json({ token, user: rows[0] });
+    res.cookie('token', token, COOKIE_OPTS).json({ user: rows[0] });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Username or email already taken' });
     res.status(500).json({ error: err.message });
@@ -35,7 +41,7 @@ router.post('/login', async (req, res) => {
     if (!rows.length || !(await bcrypt.compare(password, rows[0].password)))
       return res.status(401).json({ error: 'Invalid credentials' });
     const token = jwt.sign({ id: rows[0].id, username: rows[0].username }, secret(), { expiresIn: '7d' });
-    res.json({ token, user: { id: rows[0].id, username: rows[0].username, email: rows[0].email, preferred_country: rows[0].preferred_country, preferred_state: rows[0].preferred_state } });
+    res.cookie('token', token, COOKIE_OPTS).json({ user: { id: rows[0].id, username: rows[0].username, email: rows[0].email, preferred_country: rows[0].preferred_country, preferred_state: rows[0].preferred_state } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -62,6 +68,10 @@ router.patch('/preferences', auth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+router.post('/logout', (_req, res) => {
+  res.clearCookie('token', COOKIE_OPTS).json({ ok: true });
 });
 
 export default router;

@@ -107,29 +107,115 @@
     <div id="state-select-wrap" style="display:none"></div>
   </div>
 
-  <section class="panel">
-    <h2 class="panel-title">Filters</h2>
-    <div class="filter-actions">
-      <button class="filter-quick" id="filter-all">All</button>
-      <button class="filter-quick" id="filter-none">None</button>
-    </div>
-    <div id="filter-list"></div>
-  </section>
+  <div id="mode-tabs">
+    <button class="mode-tab active" data-mode="view">🗺 View</button>
+    <button class="mode-tab" data-mode="edit">✏ Edit</button>
+  </div>
 
-  <section class="panel">
-    <h2 class="panel-title">Resources</h2>
-    <div id="resource-btn" class="action-btn secondary-btn">🔍 Resource Lookup</div>
-  </section>
+  <!-- ── View mode ── -->
+  <div id="view-panels">
+    <section class="panel">
+      <h2 class="panel-title">Filters</h2>
+      <div class="filter-actions">
+        <button class="filter-quick" id="filter-all">All</button>
+        <button class="filter-quick" id="filter-none">None</button>
+      </div>
+      <div id="filter-list"></div>
 
-  <section class="panel">
-    <h2 class="panel-title">Paint</h2>
-    <div id="paint-mode-btn" class="action-btn paint-mode-btn">🖌 Start Painting</div>
-    <div class="divider"></div>
-    <div id="terrain-list"></div>
-    <div class="divider"></div>
-    <div id="eraser-btn" class="action-btn">⬜ Eraser</div>
-  </section>
+      <div class="divider" style="margin-top:10px"></div>
+      <div class="mf-label" style="margin-bottom:5px">Tribe Markers</div>
+      <div id="tribe-filter-dots" class="mf-dots" style="margin-bottom:5px"></div>
+      <div id="tribe-type-filters" class="mf-type-row"></div>
+
+      <div class="divider" style="margin-top:10px"></div>
+      <div class="mf-label" style="margin-bottom:5px">Settlements</div>
+      <div id="settle-stage-filters" class="mf-dots" style="margin-bottom:4px"></div>
+      <label class="mf-own-toggle">
+        <input type="checkbox" id="settle-own-only" disabled />
+        <span>My settlements only</span>
+      </label>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Resources</h2>
+      <div id="resource-btn" class="action-btn secondary-btn">🔍 Resource Lookup</div>
+    </section>
+  </div>
+
+  <!-- ── Edit mode (login required) ── -->
+  <div id="edit-panels" style="display:none">
+    <section class="panel">
+      <h2 class="panel-title">Markers</h2>
+      <div class="marker-tabs">
+        <button class="marker-tab active" data-tab="tribe">⚔ Tribe</button>
+        <button class="marker-tab" data-tab="settle">⚑ Settlement</button>
+      </div>
+
+      <div id="tribe-marker-tab">
+        <div id="tribe-dd-wrap" class="res-dd-wrap" style="margin-bottom:7px"></div>
+        <div class="type-btn-group" id="tribe-type-group">
+          <button class="type-btn active" data-type="Camp">🏕 Camp</button>
+          <button class="type-btn" data-type="Selo">🏘 Selo</button>
+          <button class="type-btn" data-type="Burgh">🏰 Burgh</button>
+        </div>
+        <button id="tribe-place-btn" class="action-btn tribe-place-btn">⚔ Mark Location</button>
+      </div>
+
+      <div id="settle-marker-tab" style="display:none">
+        <div class="settle-field">
+          <label class="settle-label">Product</label>
+          <div id="settle-resource-wrap" class="res-dd-wrap"></div>
+        </div>
+        <div class="settle-field">
+          <label class="settle-label">Stage</label>
+          <div id="settle-stage-wrap" class="res-dd-wrap"></div>
+        </div>
+        <input id="settle-name-input" class="auth-input settle-name-input" type="text" placeholder="Name (optional)…" autocomplete="off" />
+        <button id="settle-place-btn" class="action-btn settle-place-btn">⚑ Place Settlement</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Paint</h2>
+      <div id="paint-mode-btn" class="action-btn paint-mode-btn">🖌 Start Painting</div>
+      <div class="divider"></div>
+      <div id="terrain-list"></div>
+      <div class="divider"></div>
+      <div id="eraser-btn" class="action-btn">⬜ Eraser</div>
+    </section>
+  </div>
 </aside>
+
+<!-- ── Settlement placement bar ──────────────────────────────────────── -->
+<div id="settle-placement-bar" class="hidden">
+  <span>Click on the map to place your marker</span>
+  <button id="settle-cancel-place">✕ Cancel</button>
+</div>
+
+<!-- ── Settlement edit modal ─────────────────────────────────────────── -->
+<div id="settle-edit-overlay" class="hidden">
+  <div id="settle-edit-modal">
+    <button id="settle-edit-close">✕</button>
+    <div class="header-ornament">⸻</div>
+    <h3 class="settle-modal-title">Edit Settlement</h3>
+    <div class="header-ornament">⸻</div>
+    <div class="settle-field">
+      <label class="settle-label">Product</label>
+      <div id="settle-edit-resource-wrap" class="res-dd-wrap"></div>
+    </div>
+    <div class="settle-field">
+      <label class="settle-label">Stage</label>
+      <div id="settle-edit-stage-wrap" class="res-dd-wrap"></div>
+    </div>
+    <input id="settle-edit-name" class="auth-input" type="text" placeholder="Name (optional)…" autocomplete="off" />
+    <div class="settle-modal-btns">
+      <button id="settle-save-btn" class="auth-submit">Save Changes</button>
+      <button id="settle-modal-cancel" class="auth-submit settle-secondary-btn">Cancel</button>
+    </div>
+    <p id="settle-edit-error"></p>
+  </div>
+</div>
+
 
 <div id="map"></div>
 

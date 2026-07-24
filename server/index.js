@@ -1,13 +1,15 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { pool } from './db.js';
 import { auth } from './auth.js';
 import authRoutes from './routes/auth.js';
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: (origin, cb) => cb(null, origin || true), credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
@@ -147,6 +149,142 @@ app.delete('/api/terrain/:region', auth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── Tribes & lookup data ──────────────────────────────────────────────────
+
+app.get('/api/tribes', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT id, name, color, icon FROM tribes ORDER BY name');
+    res.json({ tribes: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/settlement-stages', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT id, name, sort_order, tier, icon FROM settlement_stages ORDER BY sort_order');
+    res.json({ stages: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Tribe markers ─────────────────────────────────────────────────────────
+
+app.get('/api/tribe-markers', async (req, res) => {
+  const { region } = req.query;
+  if (!region) return res.status(400).json({ error: 'region required' });
+  try {
+    const { rows } = await pool.query(`
+      SELECT m.id, m.lat, m.lng, m.type, m.region_key, m.placed_by,
+             u.username,
+             t.id AS tribe_id, t.name AS tribe_name, t.color AS tribe_color, t.icon AS tribe_icon
+      FROM tribe_markers m
+      JOIN users u  ON u.id = m.placed_by
+      JOIN tribes t ON t.id = m.tribe_id
+      WHERE m.region_key = $1
+      ORDER BY m.created_at
+    `, [region]);
+    res.json({ markers: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/tribe-markers', auth, async (req, res) => {
+  const { tribe_id, type, region_key, lat, lng } = req.body;
+  if (!tribe_id || !type || !region_key || lat == null || lng == null)
+    return res.status(400).json({ error: 'tribe_id, type, region_key, lat, lng required' });
+  if (!['Camp', 'Selo', 'Burgh'].includes(type))
+    return res.status(400).json({ error: 'type must be Camp, Selo, or Burgh' });
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO tribe_markers (placed_by, tribe_id, type, region_key, lat, lng) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
+      [req.user.id, tribe_id, type, region_key, lat, lng]
+    );
+    res.json({ id: rows[0].id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/tribe-markers/:id', auth, async (req, res) => {
+  const { type } = req.body;
+  if (type && !['Camp', 'Selo', 'Burgh'].includes(type))
+    return res.status(400).json({ error: 'type must be Camp, Selo, or Burgh' });
+  try {
+    const { rowCount } = await pool.query(
+      'UPDATE tribe_markers SET type = COALESCE($1, type) WHERE id = $2 AND placed_by = $3',
+      [type || null, req.params.id, req.user.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Not found or not yours' });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/tribe-markers/:id', auth, async (req, res) => {
+  try {
+    const { rowCount } = await pool.query(
+      'DELETE FROM tribe_markers WHERE id = $1 AND placed_by = $2',
+      [req.params.id, req.user.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Not found or not yours' });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Player settlements ────────────────────────────────────────────────────
+
+app.get('/api/player-settlements', async (req, res) => {
+  const { region } = req.query;
+  if (!region) return res.status(400).json({ error: 'region required' });
+  try {
+    const { rows } = await pool.query(`
+      SELECT ps.id, ps.lat, ps.lng, ps.name, ps.resource_type, ps.region_key, ps.user_id,
+             u.username,
+             ss.id AS stage_id, ss.name AS stage_name, ss.tier, ss.icon AS stage_icon
+      FROM player_settlements ps
+      JOIN users u             ON u.id  = ps.user_id
+      JOIN settlement_stages ss ON ss.id = ps.stage_id
+      WHERE ps.region_key = $1
+      ORDER BY ps.created_at
+    `, [region]);
+    res.json({ settlements: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/player-settlements', auth, async (req, res) => {
+  const { stage_id, resource_type, region_key, lat, lng, name } = req.body;
+  if (!stage_id || !region_key || lat == null || lng == null)
+    return res.status(400).json({ error: 'stage_id, region_key, lat, lng required' });
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO player_settlements (user_id, stage_id, resource_type, region_key, lat, lng, name) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
+      [req.user.id, stage_id, resource_type || null, region_key, lat, lng, name || null]
+    );
+    res.json({ id: rows[0].id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/player-settlements/:id', auth, async (req, res) => {
+  const { stage_id, resource_type, name } = req.body;
+  try {
+    const { rowCount } = await pool.query(
+      `UPDATE player_settlements SET
+         stage_id      = COALESCE($1::int, stage_id),
+         resource_type = $2,
+         name          = $3
+       WHERE id = $4 AND user_id = $5`,
+      [stage_id || null, resource_type || null, name || null, req.params.id, req.user.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Not found or not yours' });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/player-settlements/:id', auth, async (req, res) => {
+  try {
+    const { rowCount } = await pool.query(
+      'DELETE FROM player_settlements WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Not found or not yours' });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 const PORT = process.env.PORT || 3001;
