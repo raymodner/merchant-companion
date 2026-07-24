@@ -812,9 +812,10 @@ let tribeEditType = 'Camp';
 
 // Filter state
 const hiddenTribes     = new Set(); // tribe_id (int)
-const hiddenTribeTypes = new Set(); // 'Camp'|'Selo'|'Burgh'
-const hiddenStages     = new Set(); // stage_id (int)
-let   showOwnOnly      = false;
+const hiddenTribeTypes    = new Set(); // 'Camp'|'Selo'|'Burgh'
+const hiddenStages        = new Set(); // stage_id (int)
+const hiddenSettleProducts = new Set(); // resource_type string
+let   showOwnOnly         = false;
 
 const TRIBE_TYPE_ICONS = { Camp: '🏕', Selo: '🏘', Burgh: '🏰' };
 
@@ -907,6 +908,7 @@ function isTribeHidden(m) {
 
 function isSettlementHidden(s) {
   if (hiddenStages.has(parseInt(s.stage_id))) return true;
+  if (s.resource_type && hiddenSettleProducts.has(s.resource_type)) return true;
   if (showOwnOnly && !(currentUser && currentUser.id === parseInt(s.user_id))) return true;
   return false;
 }
@@ -1326,6 +1328,22 @@ function initMarkerUI() {
     stageFilters.appendChild(btn);
   }
 
+  const productFilters = document.getElementById('settle-product-filters');
+  const settleProductTypes = [...new Set(resourceData.map(r => r.type))].sort();
+  for (const type of settleProductTypes) {
+    const dot = document.createElement('span');
+    dot.className = 'mf-dot';
+    dot.style.background = 'rgba(201,151,58,0.15)';
+    dot.textContent = typeIcon(type);
+    dot.title = type;
+    dot.addEventListener('click', () => {
+      if (hiddenSettleProducts.has(type)) { hiddenSettleProducts.delete(type); dot.classList.remove('filtered-out'); }
+      else                                { hiddenSettleProducts.add(type);    dot.classList.add('filtered-out');    }
+      applySettlementFilters();
+    });
+    productFilters.appendChild(dot);
+  }
+
   const ownOnlyChk = document.getElementById('settle-own-only');
   ownOnlyChk.addEventListener('change', () => {
     showOwnOnly = ownOnlyChk.checked;
@@ -1467,7 +1485,31 @@ document.addEventListener('keydown', (e) => {
 
   try {
     const res = await fetch('/api/auth/me', { credentials: 'include' });
-    if (res.ok) { onLoggedIn((await res.json()).user); return; }
-  } catch {}
-  onLoggedOut();
+    if (res.ok) await onLoggedIn((await res.json()).user);
+    else onLoggedOut();
+  } catch { onLoggedOut(); }
+
+  flyToUserLocation();
 })();
+
+async function flyToUserLocation() {
+  // 1. Try GPS — fly there if it falls within the loaded region
+  if (navigator.geolocation) {
+    const pos = await new Promise(resolve =>
+      navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 6000 })
+    );
+    if (pos) {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      if (map.getBounds().contains([lat, lng])) {
+        map.setView([lat, lng], 13);
+        return;
+      }
+    }
+  }
+
+  // 2. Fall back to the player's highest-tier settlement
+  const all = Object.values(playerSettlements);
+  if (!all.length) return;
+  const best = all.reduce((a, b) => parseInt(b.data.tier) > parseInt(a.data.tier) ? b : a);
+  map.setView([parseFloat(best.data.lat), parseFloat(best.data.lng)], 13);
+}
