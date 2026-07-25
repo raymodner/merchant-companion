@@ -1,13 +1,19 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { api } from '@/api/index.js'
+
+function loadArr(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] }
+}
 
 export const usePaintStore = defineStore('paint', () => {
   const TERRAINS = ref({})           // name → { color, icon }
   const paintMode = ref(false)
   const activeTerrain = ref(null)    // null = eraser
-  const hiddenTerrains = ref([])     // string[] of terrain names
+  const hiddenTerrains = ref(loadArr('filter-terrains'))
   const cellState = ref({})          // cellKey → terrainKey
+
+  watch(hiddenTerrains, v => localStorage.setItem('filter-terrains', JSON.stringify(v)), { deep: true })
 
   async function fetchTerrains() {
     const data = await api.getTerrains()

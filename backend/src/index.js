@@ -156,6 +156,7 @@ app.get('/api/regions', async (_req, res) => {
     const countries = {}, states = {}
     for (const r of rows) {
       const obj = {
+        id: r.id,
         latMin: parseFloat(r.latMin),
         latMax: parseFloat(r.latMax),
         lngMin: parseFloat(r.lngMin),
@@ -172,10 +173,10 @@ app.get('/api/regions', async (_req, res) => {
 
 // ── Terrain painting ──────────────────────────────────────────────────────
 
-app.get('/api/terrain/:region', async (req, res) => {
+app.get('/api/terrain/:regionId', async (req, res) => {
+  const regionId = parseInt(req.params.regionId)
+  if (!regionId) return res.json({ data: {} })
   try {
-    const regionId = await resolveRegion(req.params.region)
-    if (!regionId) return res.json({ data: {} })
     const rows = await prisma.$queryRaw`
       SELECT DISTINCT ON (cp.cell_key) cp.cell_key, t.name AS terrain_name
       FROM cell_paints cp
@@ -191,12 +192,12 @@ app.get('/api/terrain/:region', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
-app.post('/api/terrain/:region/cell', auth, async (req, res) => {
+app.post('/api/terrain/:regionId/cell', auth, async (req, res) => {
   const { cellKey, terrainKey } = req.body
   if (!cellKey) return res.status(400).json({ error: 'cellKey required' })
+  const regionId = parseInt(req.params.regionId)
+  if (!regionId) return res.status(404).json({ error: 'Region not found' })
   try {
-    const regionId = await resolveRegion(req.params.region)
-    if (!regionId) return res.status(404).json({ error: 'Region not found' })
     const terrainId = await resolveTerrain(terrainKey)
     await prisma.cellPaint.create({
       data: { regionId, cellKey, terrainId, userId: req.user.id },
@@ -205,12 +206,12 @@ app.post('/api/terrain/:region/cell', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
-app.post('/api/terrain/:region/import', auth, async (req, res) => {
+app.post('/api/terrain/:regionId/import', auth, async (req, res) => {
   const { data } = req.body
   if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data required' })
+  const regionId = parseInt(req.params.regionId)
+  if (!regionId) return res.status(404).json({ error: 'Region not found' })
   try {
-    const regionId = await resolveRegion(req.params.region)
-    if (!regionId) return res.status(404).json({ error: 'Region not found' })
     const terrains = await prisma.terrain.findMany({ select: { id: true, name: true } })
     const terrainMap = Object.fromEntries(terrains.map(t => [t.name, t.id]))
     await prisma.$transaction(async (tx) => {
@@ -226,10 +227,10 @@ app.post('/api/terrain/:region/import', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
-app.delete('/api/terrain/:region', auth, async (req, res) => {
+app.delete('/api/terrain/:regionId', auth, async (req, res) => {
+  const regionId = parseInt(req.params.regionId)
+  if (!regionId) return res.status(404).json({ error: 'Region not found' })
   try {
-    const regionId = await resolveRegion(req.params.region)
-    if (!regionId) return res.status(404).json({ error: 'Region not found' })
     await prisma.cellPaint.deleteMany({ where: { regionId } })
     res.json({ ok: true })
   } catch (err) { res.status(500).json({ error: err.message }) }
@@ -261,12 +262,10 @@ app.get('/api/settlement-stages', async (_req, res) => {
 
 // ── Tribe markers ─────────────────────────────────────────────────────────
 
-app.get('/api/tribe-markers', auth, async (req, res) => {
-  const { region } = req.query
-  if (!region) return res.status(400).json({ error: 'region required' })
+app.get('/api/tribe-markers/:regionId', auth, async (req, res) => {
+  const regionId = parseInt(req.params.regionId)
+  if (!regionId) return res.json({ markers: [] })
   try {
-    const regionId = await resolveRegion(region)
-    if (!regionId) return res.json({ markers: [] })
     const rows = await prisma.tribeMarker.findMany({
       where: { regionId, placedBy: req.user.id },
       include: { user: true, tribe: true, tribeType: true },
@@ -277,7 +276,7 @@ app.get('/api/tribe-markers', auth, async (req, res) => {
       lat: m.lat,
       lng: m.lng,
       type: m.tribeType.name,
-      region_key: region,
+      region_id: regionId,
       placed_by: m.placedBy,
       username: m.user.username,
       tribe_id: m.tribeId,
@@ -290,26 +289,37 @@ app.get('/api/tribe-markers', auth, async (req, res) => {
 })
 
 app.post('/api/tribe-markers', auth, async (req, res) => {
-  const { tribe_id, type, region_key, lat, lng } = req.body
-  if (!tribe_id || !type || !region_key || lat == null || lng == null)
-    return res.status(400).json({ error: 'tribe_id, type, region_key, lat, lng required' })
+  const { tribe_id, type, region_id, lat, lng } = req.body
+  if (!tribe_id || !type || !region_id || lat == null || lng == null)
+    return res.status(400).json({ error: 'tribe_id, type, region_id, lat, lng required' })
   if (!['Camp', 'Selo', 'Burgh'].includes(type))
     return res.status(400).json({ error: 'type must be Camp, Selo, or Burgh' })
   try {
-    const regionId = await resolveRegion(region_key)
-    if (!regionId) return res.status(404).json({ error: 'Region not found' })
     const tribeTypeId = await resolveTribeType(type)
     const marker = await prisma.tribeMarker.create({
       data: {
         placedBy: req.user.id,
         tribeId: parseInt(tribe_id),
         tribeTypeId,
-        regionId,
+        regionId: parseInt(region_id),
         lat,
         lng,
       },
+      include: { user: true, tribe: true, tribeType: true },
     })
-    res.json({ id: marker.id })
+    res.json({
+      id: marker.id,
+      lat: marker.lat,
+      lng: marker.lng,
+      type: marker.tribeType.name,
+      region_id: parseInt(region_id),
+      placed_by: marker.placedBy,
+      username: marker.user.username,
+      tribe_id: marker.tribeId,
+      tribe_name: marker.tribe.name,
+      tribe_color: marker.tribe.color,
+      tribe_icon: marker.tribe.icon,
+    })
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
@@ -346,12 +356,10 @@ app.delete('/api/tribe-markers/:id', auth, async (req, res) => {
 
 // ── Player settlements ────────────────────────────────────────────────────
 
-app.get('/api/player-settlements', optionalAuth, async (req, res) => {
-  const { region } = req.query
-  if (!region) return res.status(400).json({ error: 'region required' })
+app.get('/api/player-settlements/:regionId', optionalAuth, async (req, res) => {
+  const regionId = parseInt(req.params.regionId)
+  if (!regionId) return res.json({ settlements: [] })
   try {
-    const regionId = await resolveRegion(region)
-    if (!regionId) return res.json({ settlements: [] })
     const userId = req.user?.id ?? null
     const rows = await prisma.playerSettlement.findMany({
       where: {
@@ -369,7 +377,7 @@ app.get('/api/player-settlements', optionalAuth, async (req, res) => {
       lng: s.lng,
       name: s.name,
       resource_type: s.resourceTypeRef?.name ?? null,
-      region_key: region,
+      region_id: regionId,
       user_id: s.userId,
       is_public: s.isPublic,
       username: s.user.username,
@@ -383,26 +391,39 @@ app.get('/api/player-settlements', optionalAuth, async (req, res) => {
 })
 
 app.post('/api/player-settlements', auth, async (req, res) => {
-  const { stage_id, resource_type, region_key, lat, lng, name, is_public } = req.body
-  if (!stage_id || !region_key || lat == null || lng == null)
-    return res.status(400).json({ error: 'stage_id, region_key, lat, lng required' })
+  const { stage_id, resource_type, region_id, lat, lng, name, is_public } = req.body
+  if (!stage_id || !region_id || lat == null || lng == null)
+    return res.status(400).json({ error: 'stage_id, region_id, lat, lng required' })
   try {
-    const regionId = await resolveRegion(region_key)
-    if (!regionId) return res.status(404).json({ error: 'Region not found' })
     const resourceTypeId = await resolveResourceType(resource_type)
     const settlement = await prisma.playerSettlement.create({
       data: {
         userId: req.user.id,
         stageId: parseInt(stage_id),
         resourceTypeId,
-        regionId,
+        regionId: parseInt(region_id),
         lat,
         lng,
         name: name || null,
         isPublic: is_public === true,
       },
+      include: { user: true, stage: true, resourceTypeRef: true },
     })
-    res.json({ id: settlement.id })
+    res.json({
+      id: settlement.id,
+      lat: settlement.lat,
+      lng: settlement.lng,
+      name: settlement.name,
+      resource_type: settlement.resourceTypeRef?.name ?? null,
+      region_id: parseInt(region_id),
+      user_id: settlement.userId,
+      is_public: settlement.isPublic,
+      username: settlement.user.username,
+      stage_id: settlement.stageId,
+      stage_name: settlement.stage.name,
+      tier: settlement.stage.tier,
+      stage_icon: settlement.stage.icon,
+    })
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 

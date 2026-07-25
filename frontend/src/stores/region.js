@@ -24,6 +24,8 @@ export const useRegionStore = defineStore('region', () => {
     return regions.value.countries[currentCountry.value] || null
   })
 
+  const currentRegionId = computed(() => currentBounds.value?.id ?? null)
+
   async function fetchRegions() {
     const data = await api.getRegions()
     regions.value = { countries: data.countries || {}, states: data.states || {} }
@@ -48,7 +50,7 @@ export const useRegionStore = defineStore('region', () => {
   }
 
   return {
-    regions, currentCountry, currentState, regionKey, currentBounds,
+    regions, currentCountry, currentState, regionKey, currentBounds, currentRegionId,
     fetchRegions, setCountry, setState,
   }
 })

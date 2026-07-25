@@ -19,10 +19,9 @@ const uiStore          = useUiStore()
 
 // ── Non-reactive Leaflet state ─────────────────────────────────────────────
 let map = null
-const cells             = {}   // cellKey → L.Rectangle
-const terrainMarkers    = {}   // cellKey → L.Marker (terrain icon)
-const tribeInstances    = {}   // id      → L.Marker
-const settlementInstances = {} // id      → L.Marker
+const cells               = {}   // cellKey → L.Rectangle
+const tribeInstances      = {}   // id      → L.Marker
+const settlementInstances = {}   // id      → L.Marker
 let isDragging = false
 
 // ── Grid helpers ──────────────────────────────────────────────────────────
@@ -45,27 +44,14 @@ function tooltipFor(terrainKey, lat, lng) {
   return `<b>${t.icon} ${terrainKey}</b><br><small>${coord}</small>`
 }
 
-function makeIcon(terrainKey) {
-  const t = paintStore.TERRAINS[terrainKey]
-  if (!t) return L.divIcon({ html: '', className: 'cell-icon', iconSize: [24, 24] })
-  return L.divIcon({
-    html: `<span>${t.icon}</span>`,
-    className: 'cell-icon',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  })
-}
-
 // ── Grid build / teardown ─────────────────────────────────────────────────
 function clearGrid() {
   Object.values(cells).forEach(r => r.remove())
-  Object.values(terrainMarkers).forEach(m => m.remove())
-  for (const k in cells)          delete cells[k]
-  for (const k in terrainMarkers) delete terrainMarkers[k]
+  for (const k in cells) delete cells[k]
 }
 
-async function buildGrid(bounds, regionKey) {
-  const data = await api.loadTerrain(regionKey)
+async function buildGrid(bounds, regionId) {
+  const data = await api.loadTerrain(regionId)
   paintStore.setCellState(data)
 
   const { latMin, latMax, lngMin, lngMax } = bounds
@@ -95,13 +81,6 @@ async function buildGrid(bounds, regionKey) {
 
       rect.addTo(map)
       cells[key] = rect
-
-      if (terrain) {
-        const m = L.marker(cellCenter(lat, lng), {
-          icon: makeIcon(terrain), interactive: false, zIndexOffset: 10,
-        }).addTo(map)
-        terrainMarkers[key] = m
-      }
     }
   }
 
@@ -116,6 +95,7 @@ async function buildGrid(bounds, regionKey) {
     center = [(latMin + latMax) / 2, (lngMin + lngMax) / 2]
   }
   map.setView(center, zoom)
+  applyTerrainFilters()
 }
 
 // ── Paint ─────────────────────────────────────────────────────────────────
@@ -133,16 +113,7 @@ function paintCell(key, terrainKey) {
   const [lat, lng] = key.split(',').map(Number)
   rect.setTooltipContent(tooltipFor(terrain, lat, lng))
 
-  if (terrainMarkers[key]) { terrainMarkers[key].remove(); delete terrainMarkers[key] }
-  if (terrain) {
-    const m = L.marker(cellCenter(lat, lng), {
-      icon: makeIcon(terrain), interactive: false, zIndexOffset: 10,
-    }).addTo(map)
-    if (hidden) m.getElement()?.style.setProperty('display', 'none')
-    terrainMarkers[key] = m
-  }
-
-  api.paintCell(regionStore.regionKey, key, terrainKey || null)
+  api.paintCell(regionStore.currentRegionId, key, terrainKey || null)
 }
 
 // ── Terrain filter ─────────────────────────────────────────────────────────
@@ -151,11 +122,6 @@ function applyTerrainFilters() {
     const terrain = paintStore.cellState[key]
     const hidden  = terrain && paintStore.hiddenTerrains.includes(terrain)
     rect.setStyle(hidden ? styleFor(null) : styleFor(terrain || null))
-    const marker = terrainMarkers[key]
-    if (marker) {
-      if (hidden) marker.getElement()?.style.setProperty('display', 'none')
-      else        marker.getElement()?.style.removeProperty('display')
-    }
   })
 }
 
@@ -347,14 +313,13 @@ function applySettlementVisibility() {
 // ── Map event handlers ────────────────────────────────────────────────────
 async function onMapClick(e) {
   const { lat, lng } = e.latlng
-  const regionKey = regionStore.regionKey
 
   if (uiStore.placementMode === 'tribe') {
     if (!authStore.user) { uiStore.cancelPlacement(); uiStore.requireAuth(); return }
     const id = await tribesStore.createMarker({
       tribe_id: tribesStore.activeTribeId,
       type: tribesStore.activeTribeType,
-      region_key: regionKey,
+      region_id: regionStore.currentRegionId,
       lat,
       lng,
     })
@@ -368,7 +333,7 @@ async function onMapClick(e) {
     const id = await settlementsStore.createSettlement({
       stage_id: settlementsStore.stageId,
       resource_type: settlementsStore.resourceType || null,
-      region_key: regionKey,
+      region_id: regionStore.currentRegionId,
       lat,
       lng,
       is_public: settlementsStore.isPublic,
@@ -413,7 +378,7 @@ onUnmounted(() => {
 // ── Watchers ──────────────────────────────────────────────────────────────
 
 // Region change → rebuild grid + reload markers
-watch(() => regionStore.regionKey, async (newKey) => {
+watch(() => regionStore.regionKey, async () => {
   if (!map) return
   clearGrid()
   Object.values(tribeInstances).forEach(m => m.remove())
@@ -430,10 +395,11 @@ watch(() => regionStore.regionKey, async (newKey) => {
     return
   }
 
-  await buildGrid(bounds, newKey)
+  const regionId = regionStore.currentRegionId
+  await buildGrid(bounds, regionId)
   await Promise.all([
-    tribesStore.fetchMarkers(newKey),
-    settlementsStore.fetchSettlements(newKey),
+    tribesStore.fetchMarkers(regionId),
+    settlementsStore.fetchSettlements(regionId),
   ])
 }, { immediate: false })
 
@@ -473,17 +439,17 @@ watch(() => authStore.user, () => {
 
 // ── Exposed methods ───────────────────────────────────────────────────────
 async function initRegion() {
-  const key    = regionStore.regionKey
-  const bounds = regionStore.currentBounds
+  const bounds   = regionStore.currentBounds
+  const regionId = regionStore.currentRegionId
   if (!map) return
   if (!bounds) {
     if (regionStore.currentCountry === 'United States') map.setView([39.5, -98.5], 5)
     return
   }
-  await buildGrid(bounds, key)
+  await buildGrid(bounds, regionId)
   await Promise.all([
-    tribesStore.fetchMarkers(key),
-    settlementsStore.fetchSettlements(key),
+    tribesStore.fetchMarkers(regionId),
+    settlementsStore.fetchSettlements(regionId),
   ])
 }
 

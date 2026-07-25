@@ -1,19 +1,24 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { api } from '@/api/index.js'
 
 export const useResourcesStore = defineStore('resources', () => {
   const resourceData = ref([])
 
-  // Modal state
+  // Modal state — filters persisted in localStorage
   const isOpen = ref(false)
-  const minStars = ref(0)
-  const resType = ref('')
-  const resName = ref('')
-  const resTerrain = ref('')
+  const minStars = ref(parseInt(localStorage.getItem('res-minStars') || '0'))
+  const resType = ref(localStorage.getItem('res-type') || '')
+  const resName = ref(localStorage.getItem('res-name') || '')
+  const resTerrain = ref(localStorage.getItem('res-terrain') || '')
   const product = ref('')
   const editMode = ref(false)
   const filtersOpen = ref(false)
+
+  watch(minStars, v => localStorage.setItem('res-minStars', String(v)))
+  watch(resType, v => v ? localStorage.setItem('res-type', v) : localStorage.removeItem('res-type'))
+  watch(resName, v => v ? localStorage.setItem('res-name', v) : localStorage.removeItem('res-name'))
+  watch(resTerrain, v => v ? localStorage.setItem('res-terrain', v) : localStorage.removeItem('res-terrain'))
 
   const resourceTypes = computed(() => [...new Set(resourceData.value.map(r => r.type))].sort())
 

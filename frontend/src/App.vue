@@ -40,8 +40,8 @@ onMounted(async () => {
 
 watch(() => authStore.user, async (newUser, oldUser) => {
   if ((newUser == null) !== (oldUser == null)) {
-    const key = regionStore.regionKey
-    if (key) await tribesStore.fetchMarkers(key)
+    const regionId = regionStore.currentRegionId
+    if (regionId) await tribesStore.fetchMarkers(regionId)
   }
 })
 </script>

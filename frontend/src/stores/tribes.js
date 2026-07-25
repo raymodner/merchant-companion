@@ -1,13 +1,20 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { api } from '@/api/index.js'
 import { useAuthStore } from './auth.js'
+
+function loadArr(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] }
+}
 
 export const useTribesStore = defineStore('tribes', () => {
   const TRIBES = ref([])
   const markers = ref({})            // id (string) → plain data object
-  const hiddenTribes = ref([])       // number[]
-  const hiddenTribeTypes = ref([])   // string[] ('Camp'|'Selo'|'Burgh')
+  const hiddenTribes = ref(loadArr('filter-hidden-tribes'))
+  const hiddenTribeTypes = ref(loadArr('filter-hidden-tribe-types'))
+
+  watch(hiddenTribes, v => localStorage.setItem('filter-hidden-tribes', JSON.stringify(v)), { deep: true })
+  watch(hiddenTribeTypes, v => localStorage.setItem('filter-hidden-tribe-types', JSON.stringify(v)), { deep: true })
 
   const tribePlaceMode = ref(false)
   const activeTribeId = ref(null)
@@ -26,13 +33,13 @@ export const useTribesStore = defineStore('tribes', () => {
     if (TRIBES.value.length) activeTribeId.value = TRIBES.value[0].id
   }
 
-  async function fetchMarkers(regionKey) {
+  async function fetchMarkers(regionId) {
     const authStore = useAuthStore()
     if (!authStore.user) {
       clearMarkers()
       return
     }
-    const data = await api.getTribeMarkers(regionKey)
+    const data = await api.getTribeMarkers(regionId)
     clearMarkers()
     for (const m of (data.markers || [])) {
       markers.value[m.id] = m
@@ -46,12 +53,8 @@ export const useTribesStore = defineStore('tribes', () => {
   async function createMarker(data) {
     const result = await api.createTribeMarker(data)
     if (!result) return null
-    const id = result.id
-    // Fetch fresh to get joined data (tribe_name, tribe_color, tribe_icon, username)
-    const freshData = await api.getTribeMarkers(data.region_key)
-    const m = (freshData.markers || []).find(x => x.id === id)
-    if (m) markers.value[m.id] = m
-    return id
+    markers.value[result.id] = result
+    return result.id
   }
 
   async function updateMarker(id, data) {

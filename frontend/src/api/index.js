@@ -3,18 +3,18 @@ const json = { 'Content-Type': 'application/json' }
 
 export const api = {
   // ── Terrain ───────────────────────────────────────────────────────────────
-  async loadTerrain(region) {
+  async loadTerrain(regionId) {
     try {
-      const res = await fetch(`${BASE}/terrain/${encodeURIComponent(region)}`)
+      const res = await fetch(`${BASE}/terrain/${regionId}`)
       if (!res.ok) return {}
       const data = await res.json()
       return data.data || {}
     } catch { return {} }
   },
 
-  async paintCell(region, cellKey, terrainKey) {
+  async paintCell(regionId, cellKey, terrainKey) {
     try {
-      await fetch(`${BASE}/terrain/${encodeURIComponent(region)}/cell`, {
+      await fetch(`${BASE}/terrain/${regionId}/cell`, {
         method: 'POST',
         headers: json,
         credentials: 'include',
@@ -23,9 +23,9 @@ export const api = {
     } catch {}
   },
 
-  async deleteTerrain(region) {
+  async deleteTerrain(regionId) {
     try {
-      await fetch(`${BASE}/terrain/${encodeURIComponent(region)}`, {
+      await fetch(`${BASE}/terrain/${regionId}`, {
         method: 'DELETE',
         headers: json,
         credentials: 'include',
@@ -33,9 +33,9 @@ export const api = {
     } catch {}
   },
 
-  async importTerrain(region, data) {
+  async importTerrain(regionId, data) {
     try {
-      const res = await fetch(`${BASE}/terrain/${encodeURIComponent(region)}/import`, {
+      const res = await fetch(`${BASE}/terrain/${regionId}/import`, {
         method: 'POST',
         headers: json,
         credentials: 'include',
@@ -141,9 +141,9 @@ export const api = {
   },
 
   // ── Tribe markers ─────────────────────────────────────────────────────────
-  async getTribeMarkers(region) {
+  async getTribeMarkers(regionId) {
     try {
-      const res = await fetch(`${BASE}/tribe-markers?region=${encodeURIComponent(region)}`, {
+      const res = await fetch(`${BASE}/tribe-markers/${regionId}`, {
         credentials: 'include',
       })
       return res.ok ? res.json() : { markers: [] }
@@ -179,9 +179,9 @@ export const api = {
   },
 
   // ── Settlements ───────────────────────────────────────────────────────────
-  async getSettlements(region) {
+  async getSettlements(regionId) {
     try {
-      const res = await fetch(`${BASE}/player-settlements?region=${encodeURIComponent(region)}`)
+      const res = await fetch(`${BASE}/player-settlements/${regionId}`)
       return res.ok ? res.json() : { settlements: [] }
     } catch { return { settlements: [] } }
   },

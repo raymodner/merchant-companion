@@ -1,16 +1,24 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { api } from '@/api/index.js'
 import { useAuthStore } from './auth.js'
+
+function loadArr(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] }
+}
 
 export const useSettlementsStore = defineStore('settlements', () => {
   const authStore = useAuthStore()
 
   const STAGES = ref([])
   const playerSettlements = ref({})  // id (string) → plain data object
-  const hiddenStages = ref([])       // number[]
-  const hiddenProducts = ref([])     // string[] (resource_type values)
-  const showOwnOnly = ref(false)
+  const hiddenStages = ref(loadArr('filter-hidden-stages'))
+  const hiddenProducts = ref(loadArr('filter-hidden-products'))
+  const showOwnOnly = ref(localStorage.getItem('filter-own-only') === 'true')
+
+  watch(hiddenStages, v => localStorage.setItem('filter-hidden-stages', JSON.stringify(v)), { deep: true })
+  watch(hiddenProducts, v => localStorage.setItem('filter-hidden-products', JSON.stringify(v)), { deep: true })
+  watch(showOwnOnly, v => localStorage.setItem('filter-own-only', String(v)))
 
   // Placement state
   const settlePlaceMode = ref(false)
@@ -36,8 +44,8 @@ export const useSettlementsStore = defineStore('settlements', () => {
     if (STAGES.value.length && !stageId.value) stageId.value = STAGES.value[0].id
   }
 
-  async function fetchSettlements(regionKey) {
-    const data = await api.getSettlements(regionKey)
+  async function fetchSettlements(regionId) {
+    const data = await api.getSettlements(regionId)
     clearSettlements()
     for (const s of (data.settlements || [])) {
       playerSettlements.value[s.id] = s
@@ -51,21 +59,16 @@ export const useSettlementsStore = defineStore('settlements', () => {
   async function createSettlement(data) {
     const result = await api.createSettlement(data)
     if (!result) return null
-    const id = result.id
-    // Fetch fresh to get joined data (stage_name, stage_icon, tier, username)
-    const freshData = await api.getSettlements(data.region_key)
-    const s = (freshData.settlements || []).find(x => x.id === id)
-    if (s) playerSettlements.value[s.id] = s
-    return id
+    playerSettlements.value[result.id] = result
+    return result.id
   }
 
   async function updateSettlement(id, updateData) {
     const { ok, data: resp } = await api.updateSettlement(id, updateData)
     if (!ok) return resp.error || 'Failed to update'
-    // Refresh from API — need region_key from existing record
     const existing = playerSettlements.value[id]
     if (existing) {
-      const freshData = await api.getSettlements(existing.region_key)
+      const freshData = await api.getSettlements(existing.region_id)
       for (const s of (freshData.settlements || [])) {
         playerSettlements.value[s.id] = s
       }
