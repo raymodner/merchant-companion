@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '@/api/index.js'
-import { useRegionStore } from './region.js'
+import { useRegionStore }    from './region.js'
+import { useResourcesStore } from './resources.js'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -47,6 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() {
     await api.logout()
     user.value = null
+    useResourcesStore().editMode = false
   }
 
   return { user, fetchMe, login, register, logout }

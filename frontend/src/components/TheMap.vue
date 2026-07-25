@@ -487,21 +487,49 @@ async function initRegion() {
   ])
 }
 
-async function flyToUserLocation() {
-  // 1. Try GPS
+async function initRegionFromLocation() {
+  let gpsPos = null
+
+  // 1. Try GPS (short timeout — don't block startup long)
   if (navigator.geolocation) {
-    const pos = await new Promise(resolve =>
-      navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 6000 })
+    gpsPos = await new Promise(resolve =>
+      navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 5000 })
     )
-    if (pos) {
-      const { latitude: lat, longitude: lng } = pos.coords
-      if (map?.getBounds().contains([lat, lng])) {
-        map.setView([lat, lng], 13)
-        return
+  }
+
+  // 2. If GPS granted, find the matching country (and US state) and switch if needed
+  if (gpsPos) {
+    const { latitude: lat, longitude: lng } = gpsPos.coords
+    const countries = regionStore.regions.countries
+    const states    = regionStore.regions.states
+
+    for (const [name, b] of Object.entries(countries)) {
+      if (lat >= b.latMin && lat <= b.latMax && lng >= b.lngMin && lng <= b.lngMax) {
+        if (name !== regionStore.currentCountry) await regionStore.setCountry(name)
+        if (name === 'United States') {
+          for (const [sname, sb] of Object.entries(states)) {
+            if (lat >= sb.latMin && lat <= sb.latMax && lng >= sb.lngMin && lng <= sb.lngMax) {
+              if (sname !== regionStore.currentState) await regionStore.setState(sname)
+              break
+            }
+          }
+        }
+        break
       }
     }
   }
-  // 2. Fall back to best-tier player settlement
+
+  // 3. Init grid + markers for (possibly new) region
+  await initRegion()
+
+  // 4. Fly to GPS position if it's within bounds; else fall back to best settlement
+  if (gpsPos) {
+    const { latitude: lat, longitude: lng } = gpsPos.coords
+    if (map?.getBounds().contains([lat, lng])) {
+      map.setView([lat, lng], 13)
+      return
+    }
+  }
   const all = Object.values(settlementsStore.playerSettlements)
   if (!all.length) return
   const best = all.reduce((a, b) => parseInt(b.tier) > parseInt(a.tier) ? b : a)
@@ -522,7 +550,7 @@ function panToSettlement(id) {
   setTimeout(() => settlementInstances[id]?.openPopup(), 50)
 }
 
-defineExpose({ initRegion, flyToUserLocation, panToTribe, panToSettlement })
+defineExpose({ initRegion, initRegionFromLocation, panToTribe, panToSettlement })
 </script>
 
 <template>

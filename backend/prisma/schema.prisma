@@ -24,29 +24,46 @@ model User {
 }
 
 model CellPaint {
-  id         Int      @id @default(autoincrement())
-  regionKey  String   @map("region_key") @db.VarChar(100)
-  cellKey    String   @map("cell_key") @db.VarChar(50)
-  terrainKey String?  @map("terrain_key") @db.VarChar(50)
-  userId     Int?     @map("user_id")
-  paintedAt  DateTime @default(now()) @map("painted_at")
+  id        Int      @id @default(autoincrement())
+  cellKey   String   @map("cell_key") @db.VarChar(50)
+  userId    Int?     @map("user_id")
+  paintedAt DateTime @default(now()) @map("painted_at")
+  terrainId Int?     @map("terrain_id")
+  regionId  Int      @map("region_id")
 
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user    User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  terrain Terrain?  @relation(fields: [terrainId], references: [id])
+  region  MapRegion @relation(fields: [regionId], references: [id])
 
-  @@index([regionKey, cellKey, paintedAt(sort: Desc)], name: "cell_paints_lookup")
+  @@index([regionId, cellKey, paintedAt(sort: Desc)], name: "cell_paints_lookup")
   @@map("cell_paints")
 }
 
-model Resource {
-  id        Int     @id @default(autoincrement())
-  name      String  @unique @db.VarChar(100)
-  type      String  @db.VarChar(20)
-  icon      String? @db.VarChar(20)
-  info      String?
-  available Boolean @default(true)
+model ResourceType {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(30)
+  tier Int    @default(1)
 
-  locations ResourceLocation[]
-  chain     ProductionChain?
+  resources                 Resource[]
+  playerSettlements         PlayerSettlement[]
+  processedProductionChains ProductionChain[]  @relation("ProcessedCategory")
+  final1ProductionChains    ProductionChain[]  @relation("Final1Category")
+  final2ProductionChains    ProductionChain[]  @relation("Final2Category")
+
+  @@map("resource_types")
+}
+
+model Resource {
+  id             Int  @id @default(autoincrement())
+  name           String  @unique @db.VarChar(100)
+  resourceTypeId Int     @map("resource_type_id")
+  icon           String? @db.VarChar(20)
+  info           String?
+  available      Boolean @default(true)
+
+  resourceType ResourceType       @relation(fields: [resourceTypeId], references: [id])
+  locations    ResourceLocation[]
+  chain        ProductionChain?
 
   @@map("resources")
 }
@@ -57,35 +74,51 @@ model Terrain {
   color String @db.VarChar(20)
   icon  String @db.VarChar(10)
 
-  resourceLocations ResourceLocation[]
+  locations  Location[]
+  cellPaints CellPaint[]
 
   @@map("terrains")
 }
 
+model Location {
+  id        Int    @id @default(autoincrement())
+  name      String @db.VarChar(100)
+  terrainId Int    @map("terrain_id")
+
+  terrain           Terrain            @relation(fields: [terrainId], references: [id])
+  resourceLocations ResourceLocation[]
+
+  @@unique([name, terrainId])
+  @@map("locations")
+}
+
 model ResourceLocation {
-  id         Int    @id @default(autoincrement())
-  resourceId Int    @map("resource_id")
-  terrain    String @db.VarChar(50)
-  location   String @db.VarChar(100)
-  stars      Int    @default(0) @db.SmallInt
+  id         Int @id @default(autoincrement())
+  resourceId Int @map("resource_id")
+  locationId Int @map("location_id")
+  stars      Int @default(0) @db.SmallInt
 
-  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  terrainRef Terrain  @relation(fields: [terrain], references: [name])
+  resource    Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  locationRef Location @relation(fields: [locationId], references: [id])
 
-  @@unique([resourceId, terrain, location])
+  @@unique([resourceId, locationId])
   @@map("resource_locations")
 }
 
 model ProductionChain {
-  id             Int     @id @default(autoincrement())
-  resourceId     Int     @unique @map("resource_id")
-  processedName  String  @map("processed_name") @db.VarChar(100)
-  final1Name     String? @map("final1_name") @db.VarChar(100)
-  final1Category String? @map("final1_category") @db.VarChar(30)
-  final2Name     String? @map("final2_name") @db.VarChar(100)
-  final2Category String? @map("final2_category") @db.VarChar(30)
+  id                  Int  @id @default(autoincrement())
+  resourceId          Int  @unique @map("resource_id")
+  processedName       String  @map("processed_name") @db.VarChar(100)
+  processedCategoryId Int     @map("processed_category_id")
+  final1Name          String? @map("final1_name") @db.VarChar(100)
+  final1CategoryId    Int?    @map("final1_category_id")
+  final2Name          String? @map("final2_name") @db.VarChar(100)
+  final2CategoryId    Int?    @map("final2_category_id")
 
-  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  resource             Resource      @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  processedCategoryRef ResourceType  @relation("ProcessedCategory", fields: [processedCategoryId], references: [id])
+  final1CategoryRef    ResourceType? @relation("Final1Category",    fields: [final1CategoryId],    references: [id])
+  final2CategoryRef    ResourceType? @relation("Final2Category",    fields: [final2CategoryId],    references: [id])
 
   @@map("production_chain")
 }
@@ -93,7 +126,7 @@ model ProductionChain {
 model MapRegion {
   id        Int      @id @default(autoincrement())
   name      String   @db.VarChar(100)
-  parent    String   @default("") @db.VarChar(100)
+  parentId  Int?     @map("parent_id")
   latMin    Decimal  @map("lat_min") @db.Decimal(7, 4)
   latMax    Decimal  @map("lat_max") @db.Decimal(7, 4)
   lngMin    Decimal  @map("lng_min") @db.Decimal(8, 4)
@@ -102,35 +135,51 @@ model MapRegion {
   centerLng Decimal? @map("center_lng") @db.Decimal(8, 4)
   zoom      Int?     @db.SmallInt
 
-  @@unique([name, parent])
+  parentRegion      MapRegion?         @relation("RegionParent", fields: [parentId], references: [id])
+  childRegions      MapRegion[]        @relation("RegionParent")
+  cellPaints        CellPaint[]
+  tribeMarkers      TribeMarker[]
+  playerSettlements PlayerSettlement[]
+
   @@map("map_regions")
 }
 
 model Tribe {
-  id      Int    @id @default(autoincrement())
-  name    String @unique @db.VarChar(100)
-  color   String @db.VarChar(20)
-  icon    String @db.VarChar(10)
+  id    Int    @id @default(autoincrement())
+  name  String @unique @db.VarChar(100)
+  color String @db.VarChar(20)
+  icon  String @db.VarChar(10)
 
   markers TribeMarker[]
 
   @@map("tribes")
 }
 
+model TribeType {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(20)
+
+  markers TribeMarker[]
+
+  @@map("tribe_types")
+}
+
 model TribeMarker {
-  id        Int      @id @default(autoincrement())
-  placedBy  Int      @map("placed_by")
-  tribeId   Int      @map("tribe_id")
-  type      String   @db.VarChar(10)
-  regionKey String   @map("region_key") @db.VarChar(100)
-  lat       Decimal  @db.Decimal(9, 6)
-  lng       Decimal  @db.Decimal(9, 6)
-  createdAt DateTime @default(now()) @map("created_at")
+  id          Int      @id @default(autoincrement())
+  placedBy    Int      @map("placed_by")
+  tribeId     Int      @map("tribe_id")
+  tribeTypeId Int      @map("tribe_type_id")
+  regionId    Int      @map("region_id")
+  lat         Decimal  @db.Decimal(9, 6)
+  lng         Decimal  @db.Decimal(9, 6)
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  user  User  @relation(fields: [placedBy], references: [id], onDelete: Cascade)
-  tribe Tribe @relation(fields: [tribeId], references: [id])
+  user      User      @relation(fields: [placedBy], references: [id], onDelete: Cascade)
+  tribe     Tribe     @relation(fields: [tribeId], references: [id])
+  tribeType TribeType @relation(fields: [tribeTypeId], references: [id])
+  region    MapRegion @relation(fields: [regionId], references: [id])
 
-  @@index([regionKey], name: "tribe_markers_region")
+  @@index([regionId], name: "tribe_markers_region")
   @@map("tribe_markers")
 }
 
@@ -147,20 +196,22 @@ model SettlementStage {
 }
 
 model PlayerSettlement {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @map("user_id")
-  resourceType String?  @map("resource_type") @db.VarChar(100)
-  stageId      Int      @map("stage_id")
-  regionKey    String   @map("region_key") @db.VarChar(100)
-  lat          Decimal  @db.Decimal(9, 6)
-  lng          Decimal  @db.Decimal(9, 6)
-  name         String?  @db.VarChar(200)
-  createdAt    DateTime @default(now()) @map("created_at")
-  isPublic     Boolean  @default(false) @map("is_public")
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  stageId        Int      @map("stage_id")
+  regionId       Int      @map("region_id")
+  resourceTypeId Int?     @map("resource_type_id")
+  lat            Decimal  @db.Decimal(9, 6)
+  lng            Decimal  @db.Decimal(9, 6)
+  name           String?  @db.VarChar(200)
+  createdAt      DateTime @default(now()) @map("created_at")
+  isPublic       Boolean  @default(false) @map("is_public")
 
-  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stage SettlementStage @relation(fields: [stageId], references: [id])
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stage           SettlementStage  @relation(fields: [stageId], references: [id])
+  region          MapRegion        @relation(fields: [regionId], references: [id])
+  resourceTypeRef ResourceType?    @relation(fields: [resourceTypeId], references: [id])
 
-  @@index([regionKey], name: "player_settlements_region")
+  @@index([regionId], name: "player_settlements_region")
   @@map("player_settlements")
 }

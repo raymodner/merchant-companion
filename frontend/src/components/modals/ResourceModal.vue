@@ -33,17 +33,6 @@ const starStrOptions = [
   { value: '5', label: '★★★★★ only' },
 ]
 
-function starLabel(stars) {
-  if (!stars) return '?'
-  return '★'.repeat(stars) + '☆'.repeat(5 - stars)
-}
-
-function starClass(stars) {
-  if (!stars) return 'stars-unknown'
-  if (stars >= 4) return 'stars-high'
-  if (stars >= 2) return 'stars-mid'
-  return 'stars-low'
-}
 
 function toggleEdit() {
   if (!authStore.user) { uiStore.requireAuth(); return }
@@ -69,7 +58,7 @@ function close() { rs.closeModal() }
         <!-- Edit bar -->
         <div id="res-edit-bar">
           <button id="res-edit-btn" :class="{ active: rs.editMode }" @click="toggleEdit">
-            ✎ Edit Ratings
+            {{ rs.editMode ? '✎ Done' : '✎ Edit Ratings' }}
           </button>
         </div>
 
@@ -177,20 +166,27 @@ function close() { rs.closeModal() }
                 :key="loc.id"
                 class="res-loc"
               >
-                <span>{{ loc.country }}<template v-if="loc.state"> / {{ loc.state }}</template></span>
+                <span>{{ loc.location }}</span>
 
                 <div class="res-loc-stars-wrap" @click="setStar(loc.id, loc.stars === 0 ? 1 : 0)">
-                  <template v-if="!rs.editMode">
-                    <span :class="['res-stars', starClass(loc.stars)]">{{ starLabel(loc.stars) }}</span>
+                  <template v-if="!rs.editMode || !authStore.user">
+                    <span v-if="loc.stars === 0" class="res-loc-star unknown">?</span>
+                    <template v-else>
+                      <span
+                        v-for="n in 5"
+                        :key="n"
+                        :class="['res-loc-star', n <= loc.stars ? 'filled' : 'empty']"
+                      >{{ n <= loc.stars ? '★' : '☆' }}</span>
+                    </template>
                   </template>
                   <template v-else>
+                    <button class="star-btn star-btn-reset" :class="{ active: loc.stars === 0 }" @click.stop="setStar(loc.id, 0)">✕</button>
                     <button
-                      v-for="n in [0,1,2,3,4,5]"
+                      v-for="n in [1,2,3,4,5]"
                       :key="n"
                       class="star-btn"
-                      :class="{ active: loc.stars === n }"
                       @click.stop="setStar(loc.id, n)"
-                    >{{ n === 0 ? '?' : '★'.repeat(n) }}</button>
+                    >{{ n <= loc.stars ? '★' : '☆' }}</button>
                   </template>
                 </div>
               </div>

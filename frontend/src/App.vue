@@ -35,8 +35,7 @@ onMounted(async () => {
     resourcesStore.fetchResources(),
   ])
   await authStore.fetchMe()
-  await mapRef.value?.initRegion()
-  mapRef.value?.flyToUserLocation()
+  await mapRef.value?.initRegionFromLocation()
 })
 
 watch(() => authStore.user, async (newUser, oldUser) => {

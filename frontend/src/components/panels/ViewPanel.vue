@@ -28,14 +28,13 @@ function isProductHidden(t)   { return settlementsStore.hiddenProducts.includes(
 <template>
   <div class="view-panel">
 
-    <!-- ── Terrain + Marker Filters ─────────────────────────────────── -->
+    <!-- ── Terrain Filters ───────────────────────────────────────────── -->
     <section class="panel">
       <h2 class="panel-title">Filters</h2>
       <div class="filter-actions">
         <button class="filter-quick" @click="paintStore.showAll()">All</button>
         <button class="filter-quick" @click="paintStore.hideAll()">None</button>
       </div>
-
       <button
         v-for="key in terrainKeys"
         :key="key"
@@ -46,9 +45,15 @@ function isProductHidden(t)   { return settlementsStore.hiddenProducts.includes(
         <span class="swatch" :style="{ background: paintStore.TERRAINS[key]?.color }"></span>
         {{ paintStore.TERRAINS[key]?.icon }} {{ key }}
       </button>
+    </section>
 
-      <div class="divider" style="margin-top:10px"></div>
-      <div class="mf-label" style="margin-bottom:5px">Tribe Markers</div>
+    <!-- ── Tribe Markers ─────────────────────────────────────────────── -->
+    <section class="panel">
+      <h2 class="panel-title">Tribe Markers</h2>
+      <div class="filter-actions">
+        <button class="filter-quick" @click="tribesStore.showAllTribes()">All</button>
+        <button class="filter-quick" @click="tribesStore.hideAllTribes()">None</button>
+      </div>
       <div id="tribe-filter-dots" class="mf-dots" style="margin-bottom:5px">
         <span
           v-for="tribe in tribesStore.TRIBES"
@@ -69,9 +74,15 @@ function isProductHidden(t)   { return settlementsStore.hiddenProducts.includes(
           @click="tribesStore.toggleHideType(t)"
         >{{ TRIBE_TYPE_ICONS[t] }} {{ t }}</button>
       </div>
+    </section>
 
-      <div class="divider" style="margin-top:10px"></div>
-      <div class="mf-label" style="margin-bottom:5px">Settlements</div>
+    <!-- ── Settlements ────────────────────────────────────────────────── -->
+    <section class="panel">
+      <h2 class="panel-title">Settlements</h2>
+      <div class="filter-actions">
+        <button class="filter-quick" @click="settlementsStore.showAllSettlements()">All</button>
+        <button class="filter-quick" @click="settlementsStore.hideAllSettlements()">None</button>
+      </div>
       <div id="settle-product-filters" class="mf-dots" style="margin-bottom:4px">
         <span
           v-for="rt in productTypes"
@@ -97,7 +108,6 @@ function isProductHidden(t)   { return settlementsStore.hiddenProducts.includes(
         <span class="mf-switch"></span>
         <span>Hide others</span>
       </label>
-
     </section>
 
     <!-- ── Resources ─────────────────────────────────────────────────── -->

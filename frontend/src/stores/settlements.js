@@ -91,12 +91,23 @@ export const useSettlementsStore = defineStore('settlements', () => {
     else hiddenProducts.value.push(type)
   }
 
+  function showAllSettlements() {
+    hiddenStages.value.splice(0)
+    hiddenProducts.value.splice(0)
+    showOwnOnly.value = false
+  }
+
+  function hideAllSettlements() {
+    const allIds = STAGES.value.map(s => parseInt(s.id))
+    hiddenStages.value.splice(0, hiddenStages.value.length, ...allIds)
+  }
+
   return {
     STAGES, playerSettlements, hiddenStages, hiddenProducts, showOwnOnly,
     settlePlaceMode, stageId, resourceType, isPublic, editingId,
     visibleSettlements, isHidden,
     fetchStages, fetchSettlements, clearSettlements,
     createSettlement, updateSettlement, deleteSettlement,
-    toggleHideStage, toggleHideProduct,
+    toggleHideStage, toggleHideProduct, showAllSettlements, hideAllSettlements,
   }
 })

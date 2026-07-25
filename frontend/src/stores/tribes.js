@@ -92,11 +92,20 @@ export const useTribesStore = defineStore('tribes', () => {
     else hiddenTribeTypes.value.push(type)
   }
 
+  function showAllTribes() {
+    hiddenTribes.value.splice(0)
+    hiddenTribeTypes.value.splice(0)
+  }
+
+  function hideAllTribes() {
+    hiddenTribeTypes.value.splice(0, hiddenTribeTypes.value.length, 'Camp', 'Selo', 'Burgh')
+  }
+
   return {
     TRIBES, markers, hiddenTribes, hiddenTribeTypes,
     tribePlaceMode, activeTribeId, activeTribeType, editingId,
     visibleMarkers, isHidden,
     fetchTribes, fetchMarkers, clearMarkers, createMarker, updateMarker, deleteMarker,
-    toggleHideTribe, toggleHideType,
+    toggleHideTribe, toggleHideType, showAllTribes, hideAllTribes,
   }
 })
