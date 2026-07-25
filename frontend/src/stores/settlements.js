@@ -30,9 +30,9 @@ export const useSettlementsStore = defineStore('settlements', () => {
   const editingId = ref(null)  // string id or null
 
   function isHidden(s) {
-    if (hiddenStages.value.includes(parseInt(s.stage_id))) return true
+    if (hiddenStages.value.includes(s.stage_id)) return true
     if (s.resource_type && hiddenProducts.value.includes(s.resource_type)) return true
-    if (showOwnOnly.value && !(authStore.user && authStore.user.id === parseInt(s.user_id))) return true
+    if (showOwnOnly.value && !(authStore.user && authStore.user.id === s.user_id)) return true
     return false
   }
 
@@ -82,10 +82,9 @@ export const useSettlementsStore = defineStore('settlements', () => {
   }
 
   function toggleHideStage(id) {
-    const intId = parseInt(id)
-    const idx = hiddenStages.value.indexOf(intId)
+    const idx = hiddenStages.value.indexOf(id)
     if (idx > -1) hiddenStages.value.splice(idx, 1)
-    else hiddenStages.value.push(intId)
+    else hiddenStages.value.push(id)
   }
 
   function toggleHideProduct(type) {
@@ -101,7 +100,7 @@ export const useSettlementsStore = defineStore('settlements', () => {
   }
 
   function hideAllSettlements() {
-    const allIds = STAGES.value.map(s => parseInt(s.id))
+    const allIds = STAGES.value.map(s => s.id)
     hiddenStages.value.splice(0, hiddenStages.value.length, ...allIds)
   }
 

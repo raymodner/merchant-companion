@@ -1,10 +1,21 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import rateLimit from 'express-rate-limit'
 import { prisma } from '../prisma.js'
 import { auth } from '../auth.js'
+import { isEmail } from '../validate.js'
 
 const router = Router()
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+router.use(authLimiter)
 const secret = () => process.env.JWT_SECRET
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -27,6 +38,15 @@ router.post('/register', async (req, res) => {
   const { username, email, password } = req.body
   if (!username || !email || !password)
     return res.status(400).json({ error: 'All fields required' })
+  const u = username.trim()
+  if (u.length < 3 || u.length > 50)
+    return res.status(400).json({ error: 'Username must be 3–50 characters' })
+  if (!/^[\w\-]+$/.test(u))
+    return res.status(400).json({ error: 'Username may only contain letters, numbers, _ and -' })
+  if (!isEmail(email.trim()))
+    return res.status(400).json({ error: 'Invalid email address' })
+  if (password.length < 8)
+    return res.status(400).json({ error: 'Password must be at least 8 characters' })
   try {
     const hash = await bcrypt.hash(password, 10)
     const user = await prisma.user.create({
@@ -43,6 +63,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, password } = req.body
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' })
+  if (!isEmail(email.trim())) return res.status(400).json({ error: 'Invalid email address' })
   try {
     const user = await prisma.user.findUnique({ where: { email } })
     if (!user || !(await bcrypt.compare(password, user.password)))

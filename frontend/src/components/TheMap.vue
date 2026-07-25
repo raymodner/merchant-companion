@@ -137,7 +137,7 @@ function makeTribeIcon(color, type) {
 }
 
 function tribePopupHtml(m) {
-  const isOwn = authStore.user && authStore.user.id === parseInt(m.placed_by)
+  const isOwn = authStore.user && authStore.user.id === m.placed_by
   const btns  = isOwn
     ? `<div class="sp-btns">
          <button class="sp-btn sp-edit-btn">✎ Edit</button>
@@ -228,7 +228,7 @@ function makeSettlementIcon(tier, stageIcon) {
 }
 
 function settlementPopupHtml(s) {
-  const isOwn   = authStore.user && authStore.user.id === parseInt(s.user_id)
+  const isOwn   = authStore.user && authStore.user.id === s.user_id
   const nameLine = s.name ? `<div class="sp-name">${s.name}</div>` : ''
   const resLine  = s.resource_type
     ? `<div class="sp-stage">${typeIcon(s.resource_type)} ${s.resource_type}</div>`

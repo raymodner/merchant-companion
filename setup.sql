@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS users (
-  id                SERIAL       PRIMARY KEY,
+  id                UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   username          VARCHAR(50)  NOT NULL UNIQUE,
   email             VARCHAR(255) NOT NULL UNIQUE,
   password          VARCHAR(255) NOT NULL,
@@ -11,11 +11,11 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_country VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_state   VARCHAR(100);
 
 CREATE TABLE IF NOT EXISTS cell_paints (
-  id          SERIAL       PRIMARY KEY,
+  id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   region_key  VARCHAR(100) NOT NULL,
   cell_key    VARCHAR(50)  NOT NULL,
   terrain_key VARCHAR(50),
-  user_id     INTEGER      REFERENCES users(id) ON DELETE SET NULL,
+  user_id     UUID         REFERENCES users(id) ON DELETE SET NULL,
   painted_at  TIMESTAMPTZ  DEFAULT NOW()
 );
 
@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS cell_paints_lookup
   ON cell_paints (region_key, cell_key, painted_at DESC);
 
 CREATE TABLE IF NOT EXISTS resources (
-  id        SERIAL PRIMARY KEY,
+  id        UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
   name      VARCHAR(100) NOT NULL UNIQUE,
   type      VARCHAR(20)  NOT NULL,
   icon      VARCHAR(20),
@@ -32,15 +32,15 @@ CREATE TABLE IF NOT EXISTS resources (
 );
 
 CREATE TABLE IF NOT EXISTS terrains (
-  id    SERIAL PRIMARY KEY,
+  id    UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
   name  VARCHAR(50) NOT NULL UNIQUE,
   color VARCHAR(20) NOT NULL,
   icon  VARCHAR(10) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS resource_locations (
-  id          SERIAL PRIMARY KEY,
-  resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+  id          UUID     PRIMARY KEY DEFAULT gen_random_uuid(),
+  resource_id UUID     NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
   terrain     VARCHAR(50)  NOT NULL REFERENCES terrains(name),
   location    VARCHAR(100) NOT NULL,
   stars       SMALLINT NOT NULL DEFAULT 0 CHECK (stars BETWEEN 0 AND 5),
@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS resource_locations (
 );
 
 CREATE TABLE IF NOT EXISTS production_chain (
-  id              SERIAL PRIMARY KEY,
-  resource_id     INTEGER NOT NULL UNIQUE REFERENCES resources(id) ON DELETE CASCADE,
+  id              UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  resource_id     UUID    NOT NULL UNIQUE REFERENCES resources(id) ON DELETE CASCADE,
   processed_name  VARCHAR(100) NOT NULL,
   final1_name     VARCHAR(100),
   final1_category VARCHAR(30),
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS production_chain (
 );
 
 CREATE TABLE IF NOT EXISTS map_regions (
-  id         SERIAL PRIMARY KEY,
+  id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   name       VARCHAR(100) NOT NULL,
   parent     VARCHAR(100) NOT NULL DEFAULT '',
   lat_min    DECIMAL(7,4) NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS map_regions (
 );
 
 CREATE TABLE IF NOT EXISTS tribes (
-  id    SERIAL       PRIMARY KEY,
+  id    UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   name  VARCHAR(100) NOT NULL UNIQUE,
   color VARCHAR(20)  NOT NULL,
   icon  VARCHAR(10)  NOT NULL
@@ -90,7 +90,7 @@ INSERT INTO tribes (name, color, icon) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS settlement_stages (
-  id         SERIAL       PRIMARY KEY,
+  id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   name       VARCHAR(100) NOT NULL UNIQUE,
   sort_order INT          NOT NULL DEFAULT 0,
   tier       SMALLINT     NOT NULL DEFAULT 1,
@@ -116,29 +116,29 @@ DROP TABLE IF EXISTS settlements;
 
 -- Tribe markers: where each tribe has a settlement on the map
 CREATE TABLE IF NOT EXISTS tribe_markers (
-  id         SERIAL      PRIMARY KEY,
-  placed_by  INT         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  tribe_id   INT         NOT NULL REFERENCES tribes(id),
-  type       VARCHAR(10) NOT NULL CHECK (type IN ('Camp', 'Selo', 'Burgh')),
+  id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  placed_by  UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tribe_id   UUID         NOT NULL REFERENCES tribes(id),
+  type       VARCHAR(10)  NOT NULL CHECK (type IN ('Camp', 'Selo', 'Burgh')),
   region_key VARCHAR(100) NOT NULL,
   lat        NUMERIC(9,6) NOT NULL,
   lng        NUMERIC(9,6) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ  DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS tribe_markers_region ON tribe_markers (region_key);
 
 -- Player settlements: a user's own settlement per product type
 CREATE TABLE IF NOT EXISTS player_settlements (
-  id            SERIAL      PRIMARY KEY,
-  user_id       INT         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   resource_type VARCHAR(100),
-  stage_id      INT         NOT NULL REFERENCES settlement_stages(id),
+  stage_id      UUID         NOT NULL REFERENCES settlement_stages(id),
   region_key    VARCHAR(100) NOT NULL,
   lat           NUMERIC(9,6) NOT NULL,
   lng           NUMERIC(9,6) NOT NULL,
   name          VARCHAR(200),
-  created_at    TIMESTAMPTZ DEFAULT NOW()
+  created_at    TIMESTAMPTZ  DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS player_settlements_region ON player_settlements (region_key);
@@ -153,37 +153,37 @@ ALTER TABLE player_settlements ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NU
 -- ── New lookup tables ─────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS resource_types (
-  id   SERIAL PRIMARY KEY,
+  id   UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(30) NOT NULL UNIQUE
 );
 INSERT INTO resource_types (name) VALUES ('Ore'), ('Wood'), ('Stone'), ('Raw Food')
 ON CONFLICT (name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS tribe_types (
-  id   SERIAL PRIMARY KEY,
+  id   UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(20) NOT NULL UNIQUE
 );
 INSERT INTO tribe_types (name) VALUES ('Camp'), ('Selo'), ('Burgh')
 ON CONFLICT (name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS locations (
-  id         SERIAL PRIMARY KEY,
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name       VARCHAR(100) NOT NULL,
-  terrain_id INT NOT NULL REFERENCES terrains(id),
+  terrain_id UUID NOT NULL REFERENCES terrains(id),
   UNIQUE (name, terrain_id)
 );
 
 -- ── Add FK columns (ADD COLUMN IF NOT EXISTS is idempotent) ──────────────
 
-ALTER TABLE resources          ADD COLUMN IF NOT EXISTS resource_type_id  INT REFERENCES resource_types(id);
-ALTER TABLE map_regions        ADD COLUMN IF NOT EXISTS parent_id          INT REFERENCES map_regions(id);
-ALTER TABLE cell_paints        ADD COLUMN IF NOT EXISTS terrain_id         INT REFERENCES terrains(id);
-ALTER TABLE cell_paints        ADD COLUMN IF NOT EXISTS region_id          INT REFERENCES map_regions(id);
-ALTER TABLE resource_locations ADD COLUMN IF NOT EXISTS location_id        INT REFERENCES locations(id);
-ALTER TABLE tribe_markers      ADD COLUMN IF NOT EXISTS tribe_type_id      INT REFERENCES tribe_types(id);
-ALTER TABLE tribe_markers      ADD COLUMN IF NOT EXISTS region_id          INT REFERENCES map_regions(id);
-ALTER TABLE player_settlements ADD COLUMN IF NOT EXISTS region_id          INT REFERENCES map_regions(id);
-ALTER TABLE player_settlements ADD COLUMN IF NOT EXISTS resource_type_id   INT REFERENCES resource_types(id);
+ALTER TABLE resources          ADD COLUMN IF NOT EXISTS resource_type_id  UUID REFERENCES resource_types(id);
+ALTER TABLE map_regions        ADD COLUMN IF NOT EXISTS parent_id          UUID REFERENCES map_regions(id);
+ALTER TABLE cell_paints        ADD COLUMN IF NOT EXISTS terrain_id         UUID REFERENCES terrains(id);
+ALTER TABLE cell_paints        ADD COLUMN IF NOT EXISTS region_id          UUID REFERENCES map_regions(id);
+ALTER TABLE resource_locations ADD COLUMN IF NOT EXISTS location_id        UUID REFERENCES locations(id);
+ALTER TABLE tribe_markers      ADD COLUMN IF NOT EXISTS tribe_type_id      UUID REFERENCES tribe_types(id);
+ALTER TABLE tribe_markers      ADD COLUMN IF NOT EXISTS region_id          UUID REFERENCES map_regions(id);
+ALTER TABLE player_settlements ADD COLUMN IF NOT EXISTS region_id          UUID REFERENCES map_regions(id);
+ALTER TABLE player_settlements ADD COLUMN IF NOT EXISTS resource_type_id   UUID REFERENCES resource_types(id);
 
 -- ── Populate FK columns from old string columns (guarded by column-exists checks) ──
 
@@ -305,10 +305,11 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- map_regions: drop parent string, add functional unique index on (name, COALESCE(parent_id,0))
+-- map_regions: drop parent string, add functional unique index on (name, COALESCE(parent_id, nil-uuid))
 ALTER TABLE map_regions DROP CONSTRAINT IF EXISTS map_regions_name_parent_key;
 ALTER TABLE map_regions DROP COLUMN IF EXISTS parent;
-CREATE UNIQUE INDEX IF NOT EXISTS map_regions_name_parent_id_key ON map_regions (name, COALESCE(parent_id, 0));
+CREATE UNIQUE INDEX IF NOT EXISTS map_regions_name_parent_id_key
+  ON map_regions (name, COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid));
 
 -- cell_paints: drop region_key + terrain_key, replace index
 ALTER TABLE cell_paints ALTER COLUMN region_id SET NOT NULL;
@@ -342,9 +343,9 @@ INSERT INTO resource_types (name, tier) VALUES
   ('Relic',  3), ('Armor',   3), ('Weapon', 3), ('Ware',    3), ('Luxury',  3)
 ON CONFLICT (name) DO UPDATE SET tier = EXCLUDED.tier;
 
-ALTER TABLE production_chain ADD COLUMN IF NOT EXISTS processed_category_id INT REFERENCES resource_types(id);
-ALTER TABLE production_chain ADD COLUMN IF NOT EXISTS final1_category_id    INT REFERENCES resource_types(id);
-ALTER TABLE production_chain ADD COLUMN IF NOT EXISTS final2_category_id    INT REFERENCES resource_types(id);
+ALTER TABLE production_chain ADD COLUMN IF NOT EXISTS processed_category_id UUID REFERENCES resource_types(id);
+ALTER TABLE production_chain ADD COLUMN IF NOT EXISTS final1_category_id    UUID REFERENCES resource_types(id);
+ALTER TABLE production_chain ADD COLUMN IF NOT EXISTS final2_category_id    UUID REFERENCES resource_types(id);
 
 -- Populate final category FKs from the old string columns (guarded for idempotency)
 DO $$ BEGIN

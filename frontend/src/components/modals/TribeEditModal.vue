@@ -32,6 +32,7 @@ function close() {
 
 async function submit() {
   if (!tribesStore.editingId) return
+  if (!selectedTribeId.value) { error.value = 'Please select a tribe'; return }
   loading.value = true
   error.value   = ''
   try {

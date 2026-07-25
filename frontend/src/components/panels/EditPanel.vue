@@ -20,11 +20,11 @@ const tribeTypes  = ['Camp', 'Selo', 'Burgh']
 const terrainKeys = computed(() => Object.keys(paintStore.TERRAINS))
 
 const tribeOptions = computed(() =>
-  tribesStore.TRIBES.map(t => ({ value: String(t.id), label: `${t.icon} ${t.name}` }))
+  tribesStore.TRIBES.map(t => ({ value: t.id, label: `${t.icon} ${t.name}` }))
 )
 const activeTribeIdStr = computed({
-  get: () => tribesStore.activeTribeId !== null ? String(tribesStore.activeTribeId) : '',
-  set: (v) => { tribesStore.activeTribeId = v ? parseInt(v) : null }
+  get: () => tribesStore.activeTribeId ?? '',
+  set: (v) => { tribesStore.activeTribeId = v || null }
 })
 
 const resourceTypeOptions = computed(() => [

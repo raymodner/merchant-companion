@@ -4,49 +4,49 @@
 -- map_regions UPSERTs preserve IDs referenced by user-data FK columns.
 
 CREATE TABLE IF NOT EXISTS resource_types (
-  id   SERIAL PRIMARY KEY,
+  id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(30) NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS tribe_types (
-  id   SERIAL PRIMARY KEY,
+  id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(20) NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS terrains (
-  id    SERIAL PRIMARY KEY,
+  id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name  VARCHAR(50) NOT NULL UNIQUE,
   color VARCHAR(20) NOT NULL,
   icon  VARCHAR(10) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS resources (
-  id               SERIAL PRIMARY KEY,
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name             VARCHAR(100) NOT NULL UNIQUE,
-  resource_type_id INT NOT NULL REFERENCES resource_types(id),
+  resource_type_id UUID NOT NULL REFERENCES resource_types(id),
   icon             VARCHAR(20),
   info             TEXT,
   available        BOOLEAN NOT NULL DEFAULT true
 );
 
 CREATE TABLE IF NOT EXISTS locations (
-  id         SERIAL PRIMARY KEY,
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name       VARCHAR(100) NOT NULL,
-  terrain_id INT NOT NULL REFERENCES terrains(id),
+  terrain_id UUID NOT NULL REFERENCES terrains(id),
   UNIQUE (name, terrain_id)
 );
 
 CREATE TABLE IF NOT EXISTS resource_locations (
-  id          SERIAL PRIMARY KEY,
-  resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
-  location_id INTEGER NOT NULL REFERENCES locations(id),
+  id          UUID     PRIMARY KEY DEFAULT gen_random_uuid(),
+  resource_id UUID     NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+  location_id UUID     NOT NULL REFERENCES locations(id),
   stars       SMALLINT NOT NULL DEFAULT 0 CHECK (stars BETWEEN 0 AND 5),
   UNIQUE (resource_id, location_id)
 );
 
 CREATE TABLE IF NOT EXISTS production_chain (
-  id              SERIAL PRIMARY KEY,
-  resource_id     INTEGER NOT NULL UNIQUE REFERENCES resources(id) ON DELETE CASCADE,
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  resource_id     UUID NOT NULL UNIQUE REFERENCES resources(id) ON DELETE CASCADE,
   processed_name  VARCHAR(100) NOT NULL,
   final1_name     VARCHAR(100),
   final1_category VARCHAR(30),
@@ -55,9 +55,9 @@ CREATE TABLE IF NOT EXISTS production_chain (
 );
 
 CREATE TABLE IF NOT EXISTS map_regions (
-  id         SERIAL PRIMARY KEY,
+  id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   name       VARCHAR(100) NOT NULL,
-  parent_id  INT REFERENCES map_regions(id),
+  parent_id  UUID REFERENCES map_regions(id),
   lat_min    DECIMAL(7,4) NOT NULL,
   lat_max    DECIMAL(7,4) NOT NULL,
   lng_min    DECIMAL(8,4) NOT NULL,
@@ -66,7 +66,8 @@ CREATE TABLE IF NOT EXISTS map_regions (
   center_lng DECIMAL(8,4),
   zoom       SMALLINT
 );
-CREATE UNIQUE INDEX IF NOT EXISTS map_regions_name_parent_id_key ON map_regions (name, COALESCE(parent_id, 0));
+CREATE UNIQUE INDEX IF NOT EXISTS map_regions_name_parent_id_key
+  ON map_regions (name, COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid));
 
 -- ── Static lookup data ────────────────────────────────────────────────────
 INSERT INTO resource_types (name, tier) VALUES
@@ -323,7 +324,7 @@ INSERT INTO map_regions (name, parent_id, lat_min, lat_max, lng_min, lng_max, ce
   ('Poland',         NULL, 49.0, 54.9,  14.1,  24.2, 52.0,  19.1, 6),
   ('Czech Republic', NULL, 48.6, 51.1,  12.1,  18.9, 49.8,  15.5, 7),
   ('United States',  NULL, 24.5, 49.4,-124.8, -66.9, 39.5, -98.5, 5)
-ON CONFLICT (name, COALESCE(parent_id, 0)) DO UPDATE SET
+ON CONFLICT (name, COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid)) DO UPDATE SET
   lat_min = EXCLUDED.lat_min, lat_max = EXCLUDED.lat_max,
   lng_min = EXCLUDED.lng_min, lng_max = EXCLUDED.lng_max,
   center_lat = EXCLUDED.center_lat, center_lng = EXCLUDED.center_lng,
@@ -384,6 +385,6 @@ FROM (VALUES
   ('Wyoming',        41.0, 45.0, -111.1, -104.1)
 ) AS v(name, lat_min, lat_max, lng_min, lng_max)
 JOIN map_regions us ON us.name = 'United States' AND us.parent_id IS NULL
-ON CONFLICT (name, COALESCE(parent_id, 0)) DO UPDATE SET
+ON CONFLICT (name, COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid)) DO UPDATE SET
   lat_min = EXCLUDED.lat_min, lat_max = EXCLUDED.lat_max,
   lng_min = EXCLUDED.lng_min, lng_max = EXCLUDED.lng_max;

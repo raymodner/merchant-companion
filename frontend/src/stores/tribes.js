@@ -22,7 +22,7 @@ export const useTribesStore = defineStore('tribes', () => {
   const editingId = ref(null)        // string id of marker being edited, or null
 
   function isHidden(m) {
-    return hiddenTribes.value.includes(parseInt(m.tribe_id)) || hiddenTribeTypes.value.includes(m.type)
+    return hiddenTribes.value.includes(m.tribe_id) || hiddenTribeTypes.value.includes(m.type)
   }
 
   const visibleMarkers = computed(() => Object.values(markers.value).filter(m => !isHidden(m)))
@@ -63,7 +63,7 @@ export const useTribesStore = defineStore('tribes', () => {
     // Update local data with tribe info from TRIBES list
     const existing = markers.value[id]
     if (existing) {
-      const tribeId = parseInt(data.tribe_id) || existing.tribe_id
+      const tribeId = data.tribe_id || existing.tribe_id
       const tribe = TRIBES.value.find(t => t.id === tribeId)
       markers.value[id] = {
         ...existing,
@@ -83,10 +83,9 @@ export const useTribesStore = defineStore('tribes', () => {
   }
 
   function toggleHideTribe(id) {
-    const intId = parseInt(id)
-    const idx = hiddenTribes.value.indexOf(intId)
+    const idx = hiddenTribes.value.indexOf(id)
     if (idx > -1) hiddenTribes.value.splice(idx, 1)
-    else hiddenTribes.value.push(intId)
+    else hiddenTribes.value.push(id)
   }
 
   function toggleHideType(type) {

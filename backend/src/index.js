@@ -1,13 +1,24 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import { prisma } from './prisma.js'
 import { auth, optionalAuth } from './auth.js'
 import authRoutes from './routes/auth.js'
+import { isUuid, isLat, isLng } from './validate.js'
+
+const ALLOWED_ORIGINS = new Set(
+  (process.env.ALLOWED_ORIGINS || 'http://localhost:5174').split(',').map(s => s.trim())
+)
 
 const app = express()
-app.use(cors({ origin: (origin, cb) => cb(null, origin || true), credentials: true }))
+app.use(helmet())
+app.use(cors({
+  origin: (origin, cb) =>
+    (!origin || ALLOWED_ORIGINS.has(origin)) ? cb(null, true) : cb(new Error('CORS not allowed')),
+  credentials: true,
+}))
 app.use(express.json())
 app.use(cookieParser())
 
@@ -92,11 +103,12 @@ app.get('/api/terrains', async (_req, res) => {
 })
 
 app.patch('/api/resource-locations/:id', auth, async (req, res) => {
+  if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid id' })
   const stars = parseInt(req.body.stars)
   if (isNaN(stars) || stars < 0 || stars > 5) return res.status(400).json({ error: 'stars must be 0–5' })
   try {
     await prisma.resourceLocation.update({
-      where: { id: parseInt(req.params.id) },
+      where: { id: req.params.id },
       data: { stars },
     })
     res.json({ ok: true })
@@ -174,14 +186,14 @@ app.get('/api/regions', async (_req, res) => {
 // ── Terrain painting ──────────────────────────────────────────────────────
 
 app.get('/api/terrain/:regionId', async (req, res) => {
-  const regionId = parseInt(req.params.regionId)
-  if (!regionId) return res.json({ data: {} })
+  const regionId = req.params.regionId
+  if (!isUuid(regionId)) return res.status(400).json({ error: 'Invalid region ID' })
   try {
     const rows = await prisma.$queryRaw`
       SELECT DISTINCT ON (cp.cell_key) cp.cell_key, t.name AS terrain_name
       FROM cell_paints cp
       LEFT JOIN terrains t ON t.id = cp.terrain_id
-      WHERE cp.region_id = ${regionId}
+      WHERE cp.region_id = ${regionId}::uuid
       ORDER BY cp.cell_key, cp.painted_at DESC
     `
     const data = {}
@@ -192,11 +204,14 @@ app.get('/api/terrain/:regionId', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
+const CELL_KEY_RE = /^-?\d{1,3}\.\d,-?\d{1,4}\.\d$/
+
 app.post('/api/terrain/:regionId/cell', auth, async (req, res) => {
   const { cellKey, terrainKey } = req.body
-  if (!cellKey) return res.status(400).json({ error: 'cellKey required' })
-  const regionId = parseInt(req.params.regionId)
-  if (!regionId) return res.status(404).json({ error: 'Region not found' })
+  const regionId = req.params.regionId
+  if (!isUuid(regionId)) return res.status(400).json({ error: 'Invalid region ID' })
+  if (!cellKey || !CELL_KEY_RE.test(cellKey))
+    return res.status(400).json({ error: 'Invalid cellKey' })
   try {
     const terrainId = await resolveTerrain(terrainKey)
     await prisma.cellPaint.create({
@@ -208,16 +223,17 @@ app.post('/api/terrain/:regionId/cell', auth, async (req, res) => {
 
 app.post('/api/terrain/:regionId/import', auth, async (req, res) => {
   const { data } = req.body
-  if (!data || typeof data !== 'object') return res.status(400).json({ error: 'data required' })
-  const regionId = parseInt(req.params.regionId)
-  if (!regionId) return res.status(404).json({ error: 'Region not found' })
+  const regionId = req.params.regionId
+  if (!isUuid(regionId)) return res.status(400).json({ error: 'Invalid region ID' })
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    return res.status(400).json({ error: 'data must be an object' })
   try {
     const terrains = await prisma.terrain.findMany({ select: { id: true, name: true } })
     const terrainMap = Object.fromEntries(terrains.map(t => [t.name, t.id]))
     await prisma.$transaction(async (tx) => {
       await tx.cellPaint.deleteMany({ where: { regionId } })
       for (const [cellKey, terrainKey] of Object.entries(data)) {
-        if (!terrainKey) continue
+        if (!terrainKey || !CELL_KEY_RE.test(cellKey)) continue
         await tx.cellPaint.create({
           data: { regionId, cellKey, terrainId: terrainMap[terrainKey] ?? null, userId: req.user.id },
         })
@@ -228,8 +244,8 @@ app.post('/api/terrain/:regionId/import', auth, async (req, res) => {
 })
 
 app.delete('/api/terrain/:regionId', auth, async (req, res) => {
-  const regionId = parseInt(req.params.regionId)
-  if (!regionId) return res.status(404).json({ error: 'Region not found' })
+  const regionId = req.params.regionId
+  if (!isUuid(regionId)) return res.status(400).json({ error: 'Invalid region ID' })
   try {
     await prisma.cellPaint.deleteMany({ where: { regionId } })
     res.json({ ok: true })
@@ -263,8 +279,8 @@ app.get('/api/settlement-stages', async (_req, res) => {
 // ── Tribe markers ─────────────────────────────────────────────────────────
 
 app.get('/api/tribe-markers/:regionId', auth, async (req, res) => {
-  const regionId = parseInt(req.params.regionId)
-  if (!regionId) return res.json({ markers: [] })
+  const regionId = req.params.regionId
+  if (!isUuid(regionId)) return res.status(400).json({ error: 'Invalid region ID' })
   try {
     const rows = await prisma.tribeMarker.findMany({
       where: { regionId, placedBy: req.user.id },
@@ -292,16 +308,20 @@ app.post('/api/tribe-markers', auth, async (req, res) => {
   const { tribe_id, type, region_id, lat, lng } = req.body
   if (!tribe_id || !type || !region_id || lat == null || lng == null)
     return res.status(400).json({ error: 'tribe_id, type, region_id, lat, lng required' })
+  if (!isUuid(tribe_id))   return res.status(400).json({ error: 'Invalid tribe_id' })
+  if (!isUuid(region_id))  return res.status(400).json({ error: 'Invalid region_id' })
   if (!['Camp', 'Selo', 'Burgh'].includes(type))
     return res.status(400).json({ error: 'type must be Camp, Selo, or Burgh' })
+  if (!isLat(lat)) return res.status(400).json({ error: 'lat must be a number between -90 and 90' })
+  if (!isLng(lng)) return res.status(400).json({ error: 'lng must be a number between -180 and 180' })
   try {
     const tribeTypeId = await resolveTribeType(type)
     const marker = await prisma.tribeMarker.create({
       data: {
         placedBy: req.user.id,
-        tribeId: parseInt(tribe_id),
+        tribeId: tribe_id,
         tribeTypeId,
-        regionId: parseInt(region_id),
+        regionId: region_id,
         lat,
         lng,
       },
@@ -312,7 +332,7 @@ app.post('/api/tribe-markers', auth, async (req, res) => {
       lat: marker.lat,
       lng: marker.lng,
       type: marker.tribeType.name,
-      region_id: parseInt(region_id),
+      region_id,
       placed_by: marker.placedBy,
       username: marker.user.username,
       tribe_id: marker.tribeId,
@@ -324,20 +344,22 @@ app.post('/api/tribe-markers', auth, async (req, res) => {
 })
 
 app.patch('/api/tribe-markers/:id', auth, async (req, res) => {
+  if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid id' })
   const { type, tribe_id } = req.body
   if (type && !['Camp', 'Selo', 'Burgh'].includes(type))
     return res.status(400).json({ error: 'type must be Camp, Selo, or Burgh' })
+  if (tribe_id && !isUuid(tribe_id)) return res.status(400).json({ error: 'Invalid tribe_id' })
   try {
     const existing = await prisma.tribeMarker.findFirst({
-      where: { id: parseInt(req.params.id), placedBy: req.user.id },
+      where: { id: req.params.id, placedBy: req.user.id },
     })
     if (!existing) return res.status(404).json({ error: 'Not found or not yours' })
     const tribeTypeId = type ? await resolveTribeType(type) : undefined
     await prisma.tribeMarker.update({
-      where: { id: parseInt(req.params.id) },
+      where: { id: req.params.id },
       data: {
         ...(tribeTypeId !== undefined && { tribeTypeId }),
-        ...(tribe_id && { tribeId: parseInt(tribe_id) }),
+        ...(tribe_id && { tribeId: tribe_id }),
       },
     })
     res.json({ ok: true })
@@ -345,9 +367,10 @@ app.patch('/api/tribe-markers/:id', auth, async (req, res) => {
 })
 
 app.delete('/api/tribe-markers/:id', auth, async (req, res) => {
+  if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid id' })
   try {
     const { count } = await prisma.tribeMarker.deleteMany({
-      where: { id: parseInt(req.params.id), placedBy: req.user.id },
+      where: { id: req.params.id, placedBy: req.user.id },
     })
     if (!count) return res.status(404).json({ error: 'Not found or not yours' })
     res.json({ ok: true })
@@ -357,8 +380,8 @@ app.delete('/api/tribe-markers/:id', auth, async (req, res) => {
 // ── Player settlements ────────────────────────────────────────────────────
 
 app.get('/api/player-settlements/:regionId', optionalAuth, async (req, res) => {
-  const regionId = parseInt(req.params.regionId)
-  if (!regionId) return res.json({ settlements: [] })
+  const regionId = req.params.regionId
+  if (!isUuid(regionId)) return res.status(400).json({ error: 'Invalid region ID' })
   try {
     const userId = req.user?.id ?? null
     const rows = await prisma.playerSettlement.findMany({
@@ -394,14 +417,20 @@ app.post('/api/player-settlements', auth, async (req, res) => {
   const { stage_id, resource_type, region_id, lat, lng, name, is_public } = req.body
   if (!stage_id || !region_id || lat == null || lng == null)
     return res.status(400).json({ error: 'stage_id, region_id, lat, lng required' })
+  if (!isUuid(stage_id))  return res.status(400).json({ error: 'Invalid stage_id' })
+  if (!isUuid(region_id)) return res.status(400).json({ error: 'Invalid region_id' })
+  if (!isLat(lat)) return res.status(400).json({ error: 'lat must be a number between -90 and 90' })
+  if (!isLng(lng)) return res.status(400).json({ error: 'lng must be a number between -180 and 180' })
+  if (name != null && String(name).length > 200)
+    return res.status(400).json({ error: 'Name must be 200 characters or fewer' })
   try {
     const resourceTypeId = await resolveResourceType(resource_type)
     const settlement = await prisma.playerSettlement.create({
       data: {
         userId: req.user.id,
-        stageId: parseInt(stage_id),
+        stageId: stage_id,
         resourceTypeId,
-        regionId: parseInt(region_id),
+        regionId: region_id,
         lat,
         lng,
         name: name || null,
@@ -415,7 +444,7 @@ app.post('/api/player-settlements', auth, async (req, res) => {
       lng: settlement.lng,
       name: settlement.name,
       resource_type: settlement.resourceTypeRef?.name ?? null,
-      region_id: parseInt(region_id),
+      region_id,
       user_id: settlement.userId,
       is_public: settlement.isPublic,
       username: settlement.user.username,
@@ -428,19 +457,23 @@ app.post('/api/player-settlements', auth, async (req, res) => {
 })
 
 app.patch('/api/player-settlements/:id', auth, async (req, res) => {
+  if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid id' })
   const { stage_id, resource_type, name, is_public } = req.body
+  if (stage_id != null && !isUuid(stage_id)) return res.status(400).json({ error: 'Invalid stage_id' })
+  if (name != null && String(name).length > 200)
+    return res.status(400).json({ error: 'Name must be 200 characters or fewer' })
   try {
     const existing = await prisma.playerSettlement.findFirst({
-      where: { id: parseInt(req.params.id), userId: req.user.id },
+      where: { id: req.params.id, userId: req.user.id },
     })
     if (!existing) return res.status(404).json({ error: 'Not found or not yours' })
     const resourceTypeId = resource_type !== undefined
       ? await resolveResourceType(resource_type)
       : undefined
     await prisma.playerSettlement.update({
-      where: { id: parseInt(req.params.id) },
+      where: { id: req.params.id },
       data: {
-        ...(stage_id && { stageId: parseInt(stage_id) }),
+        ...(stage_id && { stageId: stage_id }),
         ...(resourceTypeId !== undefined && { resourceTypeId }),
         name: name || null,
         ...(is_public != null && { isPublic: Boolean(is_public) }),
@@ -451,13 +484,24 @@ app.patch('/api/player-settlements/:id', auth, async (req, res) => {
 })
 
 app.delete('/api/player-settlements/:id', auth, async (req, res) => {
+  if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid id' })
   try {
     const { count } = await prisma.playerSettlement.deleteMany({
-      where: { id: parseInt(req.params.id), userId: req.user.id },
+      where: { id: req.params.id, userId: req.user.id },
     })
     if (!count) return res.status(404).json({ error: 'Not found or not yours' })
     res.json({ ok: true })
   } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  if (err.status === 413 || err.type === 'entity.too.large')
+    return res.status(413).json({ error: 'Request body too large' })
+  if (err.message === 'CORS not allowed')
+    return res.status(403).json({ error: 'CORS not allowed' })
+  console.error(err)
+  res.status(err.status || 500).json({ error: 'Internal server error' })
 })
 
 const PORT = process.env.PORT || 3001

@@ -19,9 +19,9 @@ const productTypes = computed(() =>
 )
 
 function isTerrainHidden(key) { return paintStore.hiddenTerrains.includes(key) }
-function isTribeHidden(id)    { return tribesStore.hiddenTribes.includes(parseInt(id)) }
+function isTribeHidden(id)    { return tribesStore.hiddenTribes.includes(id) }
 function isTribeTypeHidden(t) { return tribesStore.hiddenTribeTypes.includes(t) }
-function isStageHidden(id)    { return settlementsStore.hiddenStages.includes(parseInt(id)) }
+function isStageHidden(id)    { return settlementsStore.hiddenStages.includes(id) }
 function isProductHidden(t)   { return settlementsStore.hiddenProducts.includes(t) }
 </script>
 

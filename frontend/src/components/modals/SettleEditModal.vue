@@ -36,6 +36,8 @@ function close() {
 
 async function submit() {
   if (!settlementsStore.editingId) return
+  if (!stageId.value) { error.value = 'Stage is required'; return }
+  if (name.value.trim().length > 200) { error.value = 'Name must be 200 characters or fewer'; return }
   loading.value = true
   error.value   = ''
   try {
