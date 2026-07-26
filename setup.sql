@@ -90,25 +90,37 @@ INSERT INTO tribes (name, color, icon) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS settlement_stages (
-  id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-  name       VARCHAR(100) NOT NULL UNIQUE,
-  sort_order INT          NOT NULL DEFAULT 0,
-  tier       SMALLINT     NOT NULL DEFAULT 1,
-  icon       VARCHAR(10)  NOT NULL
+  id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  name          VARCHAR(100) NOT NULL UNIQUE,
+  sort_order    INT          NOT NULL DEFAULT 0,
+  tier          SMALLINT     NOT NULL DEFAULT 1,
+  icon          VARCHAR(10)  NOT NULL,
+  population    INT,
+  days_building SMALLINT
 );
 
--- Player settlement stages (Camp/Selo/Burgh are tribe types, not player stages)
-INSERT INTO settlement_stages (name, sort_order, tier, icon) VALUES
-  ('Camp',       1, 1, '🏕'),
-  ('Town',       2, 2, '🏙'),
-  ('Homestead',  3, 2, '🏡'),
-  ('City',       4, 3, '🌆'),
-  ('Castle',     5, 3, '🏯'),
-  ('Metropolis', 6, 4, '🌇'),
-  ('Abbey',      7, 3, '⛪')
-ON CONFLICT (name) DO NOTHING;
+ALTER TABLE settlement_stages
+  ADD COLUMN IF NOT EXISTS population    INT,
+  ADD COLUMN IF NOT EXISTS days_building SMALLINT;
 
--- Remove tribe types that were incorrectly added as player stages
+INSERT INTO settlement_stages (name, sort_order, tier, icon, population, days_building) VALUES
+  ('Camp',       1,  1, '🏕', 15,   0),
+  ('Hamlet',     2,  2, '🏘', 40,   1),
+  ('Steading',   3,  3, '🌾', NULL, 1),
+  ('Homestead',  4,  4, '🏡', NULL, NULL),
+  ('Village',    5,  5, '🏘', NULL, NULL),
+  ('Town',       6,  6, '🏙', NULL, NULL),
+  ('City',       7,  7, '🌆', NULL, NULL),
+  ('Metropolis', 8,  8, '🌇', NULL, NULL),
+  ('Abbey',      9,  8, '⛪', NULL, NULL),
+  ('Castle',     10, 8, '🏯', NULL, NULL)
+ON CONFLICT (name) DO UPDATE SET
+  sort_order    = EXCLUDED.sort_order,
+  tier          = EXCLUDED.tier,
+  icon          = EXCLUDED.icon,
+  population    = EXCLUDED.population,
+  days_building = EXCLUDED.days_building;
+
 DELETE FROM settlement_stages WHERE name IN ('Selo', 'Burgh');
 
 -- Drop old merged table if it exists

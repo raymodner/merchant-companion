@@ -260,6 +260,8 @@ app.get('/api/settlement-stages', async (_req, res) => {
         sort_order: s.sortOrder,
         tier: s.tier,
         icon: s.icon,
+        population: s.population,
+        days_building: s.daysBuilding,
       })),
     })
   } catch (err) {
