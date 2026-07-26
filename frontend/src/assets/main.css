@@ -283,7 +283,7 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; }
   border-radius: 2px;
   flex-shrink: 0;
   border: 1px solid rgba(0,0,0,0.35);
-  opacity: 0.6;
+  opacity: 0.4;
 }
 .terrain-label {
   font-size: 13px;

@@ -34,7 +34,7 @@ function styleFor(terrainKey) {
   if (!terrainKey || !paintStore.TERRAINS[terrainKey]) {
     return { color: 'rgba(90,62,26,0.22)', weight: 1, fillColor: '#8a6020', fillOpacity: 0.06 }
   }
-  return { color: 'rgba(0,0,0,0.28)', weight: 1, fillColor: paintStore.TERRAINS[terrainKey].color, fillOpacity: 0.60 }
+  return { color: 'rgba(0,0,0,0.28)', weight: 1, fillColor: paintStore.TERRAINS[terrainKey].color, fillOpacity: 0.40 }
 }
 
 function tooltipFor(terrainKey, lat, lng) {
