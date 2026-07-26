@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
 const props = defineProps({
   options:     { type: Array,  default: () => [] },
@@ -8,25 +8,36 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue'])
 
-const isOpen    = ref(false)
-const btnRef    = ref(null)
-const listStyle = ref({})
+const isOpen     = ref(false)
+const filterText = ref('')
+const btnRef     = ref(null)
+const inputRef   = ref(null)
+const listStyle  = ref({})
+const uid        = Symbol()
 
 const selectedLabel = computed(() =>
   props.options.find(o => o.value === props.modelValue)?.label ?? props.options[0]?.label ?? ''
 )
 
+const filteredOptions = computed(() => {
+  const q = filterText.value.trim().toLowerCase()
+  if (!q) return props.options
+  return props.options.filter(o => o.label.toLowerCase().includes(q))
+})
+
 function open() {
+  document.dispatchEvent(new CustomEvent('app-dd-close-others', { detail: uid }))
   const r = btnRef.value.getBoundingClientRect()
-  listStyle.value = {
-    top:   (r.bottom + 3) + 'px',
-    left:   r.left + 'px',
-    width:  r.width + 'px',
-  }
+  listStyle.value = { top: (r.bottom + 3) + 'px', left: r.left + 'px', width: r.width + 'px' }
   isOpen.value = true
+  filterText.value = ''
+  nextTick(() => inputRef.value?.focus())
 }
 
-function close() { isOpen.value = false }
+function close() {
+  isOpen.value = false
+  filterText.value = ''
+}
 
 function toggle(e) {
   e.stopPropagation()
@@ -38,10 +49,16 @@ function select(value) {
   close()
 }
 
-function onDocClick() { close() }
+function onCloseOthers(e) { if (e.detail !== uid) close() }
 
-onMounted(() => document.addEventListener('click', onDocClick))
-onUnmounted(() => document.removeEventListener('click', onDocClick))
+onMounted(() => {
+  document.addEventListener('click', close)
+  document.addEventListener('app-dd-close-others', onCloseOthers)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', close)
+  document.removeEventListener('app-dd-close-others', onCloseOthers)
+})
 </script>
 
 <template>
@@ -62,13 +79,25 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
       :style="listStyle"
       @click.stop
     >
-      <div
-        v-for="o in options"
-        :key="o.value"
-        class="res-dd-item"
-        :class="{ active: o.value === modelValue }"
-        @mousedown.prevent="select(o.value)"
-      >{{ o.label }}</div>
+      <div class="res-dd-filter">
+        <input
+          ref="inputRef"
+          v-model="filterText"
+          class="res-dd-filter-input"
+          placeholder="Filter…"
+          @keydown.escape.prevent="close"
+        />
+      </div>
+      <div class="res-dd-items">
+        <div
+          v-for="o in filteredOptions"
+          :key="o.value"
+          class="res-dd-item"
+          :class="{ active: o.value === modelValue }"
+          @mousedown.prevent="select(o.value)"
+        >{{ o.label }}</div>
+        <div v-if="filteredOptions.length === 0" class="res-dd-empty">No results</div>
+      </div>
     </div>
   </Teleport>
 </template>
