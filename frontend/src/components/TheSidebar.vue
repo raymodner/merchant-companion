@@ -74,7 +74,10 @@ async function handleLogout() { await authStore.logout() }
     <div id="user-bar">
       <template v-if="authStore.user">
         <span id="username-display">{{ authStore.user.username }}</span>
-        <button id="logout-btn" @click="handleLogout">Log out</button>
+        <div id="user-actions">
+          <button id="change-pw-btn" @click="uiStore.changePasswordModalOpen = true">Password</button>
+          <button id="logout-btn" @click="handleLogout">Log out</button>
+        </div>
       </template>
       <template v-else>
         <button id="login-btn" @click="uiStore.requireAuth()">Log In / Register</button>

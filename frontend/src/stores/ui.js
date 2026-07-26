@@ -6,6 +6,7 @@ export const useUiStore = defineStore('ui', () => {
   const mode = ref('view')           // 'view' | 'edit'
   const markerTab = ref('tribe')     // 'tribe' | 'settle'
   const authModalOpen = ref(false)
+  const changePasswordModalOpen = ref(false)
   const placementMode = ref(null)    // null | 'tribe' | 'settle'
   const placementText = ref('')
 
@@ -26,7 +27,7 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   return {
-    sidebarOpen, mode, markerTab, authModalOpen, placementMode, placementText,
+    sidebarOpen, mode, markerTab, authModalOpen, changePasswordModalOpen, placementMode, placementText,
     setMode, openSidebar, closeSidebar, toggleSidebar, requireAuth, startPlacement, cancelPlacement,
   }
 })

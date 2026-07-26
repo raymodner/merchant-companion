@@ -1,15 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { api } from '@/api/index.js'
-import { useAuthStore } from './auth.js'
 
 function loadArr(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] }
 }
 
 export const useSettlementsStore = defineStore('settlements', () => {
-  const authStore = useAuthStore()
-
   const STAGES = ref([])
   const playerSettlements = ref({})  // id (string) → plain data object
   const hiddenStages = ref(loadArr('filter-hidden-stages'))
@@ -32,7 +29,7 @@ export const useSettlementsStore = defineStore('settlements', () => {
   function isHidden(s) {
     if (hiddenStages.value.includes(s.stage_id)) return true
     if (s.resource_type && hiddenProducts.value.includes(s.resource_type)) return true
-    if (showOwnOnly.value && !(authStore.user && authStore.user.id === s.user_id)) return true
+    if (showOwnOnly.value && !s.is_own) return true
     return false
   }
 

@@ -41,7 +41,7 @@ function tooltipFor(terrainKey, lat, lng) {
   const coord = `${lat.toFixed(1)}°N, ${lng.toFixed(1)}°E`
   if (!terrainKey || !paintStore.TERRAINS[terrainKey]) return coord
   const t = paintStore.TERRAINS[terrainKey]
-  return `<b>${t.icon} ${terrainKey}</b><br><small>${coord}</small>`
+  return html`<b>${t.icon} ${terrainKey}</b><br><small>${coord}</small>`
 }
 
 // ── Grid build / teardown ─────────────────────────────────────────────────
@@ -128,7 +128,7 @@ function applyTerrainFilters() {
 // ── Tribe marker helpers ──────────────────────────────────────────────────
 function makeTribeIcon(color, type) {
   return L.divIcon({
-    html: `<div class="tribe-pin" style="background:${color}">${TRIBE_TYPE_ICONS[type] || '🏕'}</div>`,
+    html: html`<div class="tribe-pin" style="background:${color}">${TRIBE_TYPE_ICONS[type] || '🏕'}</div>`,
     className: '',
     iconSize: [30, 30],
     iconAnchor: [15, 15],
@@ -136,15 +136,29 @@ function makeTribeIcon(color, type) {
   })
 }
 
+class SafeHtml { constructor(s) { this.s = String(s ?? '') } }
+const safe = s => new SafeHtml(s)
+
+function html(strings, ...vals) {
+  let out = strings[0]
+  for (let i = 0; i < vals.length; i++) {
+    const v = vals[i]
+    out += (v instanceof SafeHtml ? v.s
+      : String(v ?? '')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+    ) + strings[i + 1]
+  }
+  return out
+}
+
 function tribePopupHtml(m) {
-  const isOwn = authStore.user && authStore.user.id === m.placed_by
-  const btns  = isOwn
-    ? `<div class="sp-btns">
-         <button class="sp-btn sp-edit-btn">✎ Edit</button>
-         <button class="sp-btn sp-del-btn">✕ Delete</button>
-       </div>`
-    : ''
-  return `<div class="sp-body">
+  const btns = m.is_own ? safe(`
+    <div class="sp-btns">
+      <button class="sp-btn sp-edit-btn">✎ Edit</button>
+      <button class="sp-btn sp-del-btn">✕ Delete</button>
+    </div>`) : safe('')
+  return html`<div class="sp-body">
     <div class="sp-tribe">
       <span class="sp-dot" style="background:${m.tribe_color}"></span>
       ${m.tribe_icon} ${m.tribe_name}
@@ -219,7 +233,7 @@ function tierSize(tier) {
 function makeSettlementIcon(tier, stageIcon) {
   const sz = tierSize(parseInt(tier) || 1)
   return L.divIcon({
-    html: `<div class="player-pin" style="width:${sz}px;height:${sz}px">${stageIcon}</div>`,
+    html: html`<div class="player-pin" style="width:${sz}px;height:${sz}px">${stageIcon}</div>`,
     className: '',
     iconSize: [sz, sz],
     iconAnchor: [sz / 2, sz / 2],
@@ -228,21 +242,19 @@ function makeSettlementIcon(tier, stageIcon) {
 }
 
 function settlementPopupHtml(s) {
-  const isOwn   = authStore.user && authStore.user.id === s.user_id
-  const nameLine = s.name ? `<div class="sp-name">${s.name}</div>` : ''
+  const nameLine = s.name ? safe(html`<div class="sp-name">${s.name}</div>`) : safe('')
   const resLine  = s.resource_type
-    ? `<div class="sp-stage">${typeIcon(s.resource_type)} ${s.resource_type}</div>`
-    : ''
-  const visLine  = isOwn
-    ? `<div class="sp-stage">${s.is_public ? '🔓 Public' : '🔒 Private'}</div>`
-    : ''
-  const btns = isOwn
-    ? `<div class="sp-btns">
-         <button class="sp-btn sp-edit-btn">✎ Edit</button>
-         <button class="sp-btn sp-del-btn">✕ Delete</button>
-       </div>`
-    : ''
-  return `<div class="sp-body">
+    ? safe(html`<div class="sp-stage">${typeIcon(s.resource_type)} ${s.resource_type}</div>`)
+    : safe('')
+  const visLine  = s.is_own
+    ? safe(`<div class="sp-stage">${s.is_public ? '🔓 Public' : '🔒 Private'}</div>`)
+    : safe('')
+  const btns = s.is_own ? safe(`
+    <div class="sp-btns">
+      <button class="sp-btn sp-edit-btn">✎ Edit</button>
+      <button class="sp-btn sp-del-btn">✕ Delete</button>
+    </div>`) : safe('')
+  return html`<div class="sp-body">
     <div class="sp-tribe" style="color:#c9973a">⚑ ${s.username}'s Settlement</div>
     <div class="sp-stage">${s.stage_icon} ${s.stage_name}</div>
     ${resLine}

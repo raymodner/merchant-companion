@@ -2,19 +2,13 @@ services:
   db:
     image: postgres:15-alpine
     container_name: terrain_db
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      TZ: Europe/Amsterdam
-      PGTZ: Europe/Amsterdam
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./setup.sql:/docker-entrypoint-initdb.d/01_setup.sql:ro
-      - ./seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
-    ports:
-      - '127.0.0.1:5432:5432'   # local dev tools only; remove entirely in production
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${DB_USER}']
       interval: 10s
@@ -26,38 +20,29 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: terrain_api
-    restart: unless-stopped
+    restart: always
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       PORT: 3001
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: production
+      COOKIE_SECURE: 'true'
       JWT_SECRET: ${JWT_SECRET}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5174}
-    ports:
-      - '3001:3001'
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: dev
+      target: prod
     container_name: terrain_frontend
-    restart: unless-stopped
-    environment:
-      API_URL: http://api:3001
+    restart: always
     ports:
-      - '5174:5173'
+      - '127.0.0.1:8080:80'
     depends_on:
       - api
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
 
 volumes:
   postgres_data:

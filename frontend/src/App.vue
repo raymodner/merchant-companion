@@ -4,8 +4,9 @@ import TheMap          from './components/TheMap.vue'
 import TheSidebar      from './components/TheSidebar.vue'
 import AuthModal       from './components/modals/AuthModal.vue'
 import ResourceModal   from './components/modals/ResourceModal.vue'
-import TribeEditModal  from './components/modals/TribeEditModal.vue'
-import SettleEditModal from './components/modals/SettleEditModal.vue'
+import TribeEditModal        from './components/modals/TribeEditModal.vue'
+import SettleEditModal       from './components/modals/SettleEditModal.vue'
+import ChangePasswordModal   from './components/modals/ChangePasswordModal.vue'
 
 import { useAuthStore }        from '@/stores/auth.js'
 import { useRegionStore }      from '@/stores/region.js'
@@ -61,8 +62,9 @@ watch(() => authStore.user, async (newUser, oldUser) => {
       <button id="settle-cancel-place" @click="uiStore.cancelPlacement()">✕ Cancel</button>
     </div>
 
-    <AuthModal       v-if="uiStore.authModalOpen" />
-    <ResourceModal   v-if="resourcesStore.isOpen" />
+    <AuthModal             v-if="uiStore.authModalOpen" />
+    <ChangePasswordModal   v-if="uiStore.changePasswordModalOpen" />
+    <ResourceModal         v-if="resourcesStore.isOpen" />
     <TribeEditModal  />
     <SettleEditModal />
   </div>

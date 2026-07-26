@@ -114,6 +114,16 @@ export const api = {
     return { ok: res.ok, data: await res.json() }
   },
 
+  async changePassword(currentPassword, newPassword) {
+    const res = await fetch(`${BASE}/auth/password`, {
+      method: 'PATCH',
+      headers: json,
+      credentials: 'include',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+    return { ok: res.ok, data: await res.json() }
+  },
+
   async logout() {
     try {
       await fetch(`${BASE}/auth/logout`, { method: 'POST', credentials: 'include' })
@@ -181,7 +191,9 @@ export const api = {
   // ── Settlements ───────────────────────────────────────────────────────────
   async getSettlements(regionId) {
     try {
-      const res = await fetch(`${BASE}/player-settlements/${regionId}`)
+      const res = await fetch(`${BASE}/player-settlements/${regionId}`, {
+        credentials: 'include',
+      })
       return res.ok ? res.json() : { settlements: [] }
     } catch { return { settlements: [] } }
   },
