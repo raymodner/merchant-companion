@@ -1,8 +1,12 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import AppDropdown from '@/components/AppDropdown.vue'
 import { useSettlementsStore } from '@/stores/settlements.js'
+import { useResourcesStore }   from '@/stores/resources.js'
+import { typeIcon } from '@/utils.js'
 
 const settlementsStore = useSettlementsStore()
+const resourcesStore   = useResourcesStore()
 
 const stageId      = ref(null)
 const resourceType = ref('')
@@ -10,6 +14,20 @@ const name         = ref('')
 const isPublic     = ref(false)
 const error        = ref('')
 const loading      = ref(false)
+
+const stageOptions = computed(() =>
+  settlementsStore.STAGES.map(s => ({ value: String(s.id), label: `${s.icon} ${s.name} (tier ${s.tier})` }))
+)
+
+const stageIdStr = computed({
+  get: () => stageId.value ?? '',
+  set: (v) => { stageId.value = v || null },
+})
+
+const resourceTypeOptions = computed(() => [
+  { value: '', label: 'No product' },
+  ...resourcesStore.resourceTypes.map(t => ({ value: t, label: `${typeIcon(t)} ${t}` })),
+])
 
 const editingSettlement = computed(() =>
   settlementsStore.editingId
@@ -66,22 +84,16 @@ async function submit() {
         <form @submit.prevent="submit">
           <div class="settle-field">
             <span class="settle-label">Stage</span>
-            <select v-model="stageId" class="auth-input" style="flex:1">
-              <option v-for="s in settlementsStore.STAGES" :key="s.id" :value="s.id">
-                {{ s.icon }} {{ s.name }} (tier {{ s.tier }})
-              </option>
-            </select>
+            <div style="flex:1;min-width:0">
+              <AppDropdown :options="stageOptions" v-model="stageIdStr" />
+            </div>
           </div>
 
           <div class="settle-field">
             <span class="settle-label">Type</span>
-            <input
-              v-model="resourceType"
-              type="text"
-              class="auth-input"
-              style="flex:1"
-              placeholder="e.g. Iron Ore"
-            />
+            <div style="flex:1;min-width:0">
+              <AppDropdown :options="resourceTypeOptions" v-model="resourceType" />
+            </div>
           </div>
 
           <div class="settle-field">
@@ -95,10 +107,11 @@ async function submit() {
             />
           </div>
 
-          <div class="settle-field">
-            <label style="display:flex;align-items:center;gap:6px;font-family:'Crimson Text',serif;font-size:14px;color:#d4b87a;cursor:pointer">
+          <div style="margin: 10px 0">
+            <label class="mf-own-toggle">
               <input type="checkbox" v-model="isPublic" />
-              Public (visible to all)
+              <span class="mf-switch"></span>
+              <span>Public (visible to all)</span>
             </label>
           </div>
 

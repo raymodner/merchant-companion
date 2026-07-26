@@ -64,6 +64,7 @@ onUnmounted(() => {
 <template>
   <button
     ref="btnRef"
+    type="button"
     :class="['res-dd-btn', cls ? `${cls}-btn` : '', { open: isOpen }]"
     data-dd-btn="1"
     @click="toggle"

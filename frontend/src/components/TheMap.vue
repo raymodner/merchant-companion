@@ -205,7 +205,7 @@ function syncTribeMarkers() {
         icon: makeTribeIcon(m.tribe_color, m.type),
         zIndexOffset: 100,
       })
-      marker.bindPopup(tribePopupHtml(m), { className: 'settlement-popup', minWidth: 150 })
+      marker.bindPopup(tribePopupHtml(m), { className: 'settlement-popup', minWidth: 200 })
       marker.on('popupopen', () => bindTribePopupButtons(id))
       marker.addTo(map)
       tribeInstances[id] = marker
@@ -230,10 +230,11 @@ function tierSize(tier) {
   return tier >= 4 ? 40 : tier === 3 ? 34 : tier === 2 ? 30 : 26
 }
 
-function makeSettlementIcon(tier, stageIcon) {
-  const sz = tierSize(parseInt(tier) || 1)
+function makeSettlementIcon(tier, stageIcon, isOwn) {
+  const sz   = tierSize(parseInt(tier) || 1)
+  const ring = isOwn ? '#c9973a' : '#6a9aaf'
   return L.divIcon({
-    html: html`<div class="player-pin" style="width:${sz}px;height:${sz}px">${stageIcon}</div>`,
+    html: html`<div class="player-pin" style="width:${sz}px;height:${sz}px;border-color:${safe(ring)}">${stageIcon}</div>`,
     className: '',
     iconSize: [sz, sz],
     iconAnchor: [sz / 2, sz / 2],
@@ -296,13 +297,13 @@ function syncSettlements() {
   // Add/update
   for (const id in newS) {
     const s = newS[id]
-    const icon = makeSettlementIcon(s.tier, s.stage_icon)
+    const icon = makeSettlementIcon(s.tier, s.stage_icon, s.is_own)
     if (!settlementInstances[id]) {
       const marker = L.marker([parseFloat(s.lat), parseFloat(s.lng)], {
         icon,
         zIndexOffset: 110,
       })
-      marker.bindPopup(settlementPopupHtml(s), { className: 'settlement-popup', minWidth: 160 })
+      marker.bindPopup(settlementPopupHtml(s), { className: 'settlement-popup', minWidth: 200 })
       marker.on('popupopen', () => bindSettlementPopupButtons(id))
       marker.addTo(map)
       settlementInstances[id] = marker
@@ -528,7 +529,9 @@ function panToSettlement(id) {
   setTimeout(() => settlementInstances[id]?.openPopup(), 50)
 }
 
-defineExpose({ initRegion, initRegionFromLocation, panToTribe, panToSettlement })
+async function placeAt(lat, lng) { await onMapClick({ latlng: { lat, lng } }) }
+
+defineExpose({ initRegion, initRegionFromLocation, panToTribe, panToSettlement, placeAt })
 </script>
 
 <template>

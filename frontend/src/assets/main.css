@@ -897,6 +897,53 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; }
 .tribe-place-btn:hover { color: #8aaa5a; border-color: #5a7a38; }
 .tribe-place-btn.active { color: #aad87a; border-color: #8aaa5a; background: rgba(138,170,90,0.15); }
 
+/* ── Alternative placement (location / coordinates) ────────────────── */
+.place-alt {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.place-alt-btn {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid #3a2810;
+  border-radius: 3px;
+  color: #7a5a28;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.place-alt-btn:hover:not(:disabled) { color: #c9973a; border-color: #7a5a28; }
+.place-alt-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.place-coords {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.coord-input {
+  flex: 1;
+  min-width: 0;
+  background: #1a0f04;
+  border: 1px solid #3a2810;
+  border-radius: 3px;
+  color: #c9973a;
+  font-family: 'Crimson Text', serif;
+  font-size: 12px;
+  padding: 4px 6px;
+  outline: none;
+}
+.coord-input:focus { border-color: #c9973a; }
+.coord-input::placeholder { color: #5a3e1a; }
+.place-error {
+  font-family: 'Crimson Text', serif;
+  font-size: 12px;
+  color: #d45a3a;
+}
+
 /* ── Tribe marker pin ───────────────────────────────────────────────── */
 .tribe-pin {
   width: 30px; height: 30px;
@@ -998,6 +1045,7 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; }
   font-family: 'Cinzel', serif;
   font-size: 9px;
   letter-spacing: 0.08em;
+  white-space: nowrap;
   background: transparent;
   border: 1px solid #3a2810;
   border-radius: 3px;

@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, inject } from 'vue'
 import AppDropdown from '@/components/AppDropdown.vue'
 import { useAuthStore }        from '@/stores/auth.js'
 import { useUiStore }          from '@/stores/ui.js'
@@ -15,6 +15,7 @@ const paintStore       = usePaintStore()
 const tribesStore      = useTribesStore()
 const settlementsStore = useSettlementsStore()
 const resourcesStore   = useResourcesStore()
+const mapRef           = inject('mapRef')
 
 const tribeTypes  = ['Camp', 'Selo', 'Burgh']
 const terrainKeys = computed(() => Object.keys(paintStore.TERRAINS))
@@ -31,6 +32,9 @@ const resourceTypeOptions = computed(() => [
   { value: '', label: 'Any product' },
   ...resourcesStore.resourceTypes.map(t => ({ value: t, label: `${typeIcon(t)} ${t}` }))
 ])
+
+const geoError   = ref('')
+const geoLoading = ref(false)
 
 function startTribePlacement() {
   if (!authStore.user) { uiStore.requireAuth(); return }
@@ -50,6 +54,23 @@ function startSettlePlacement() {
   uiStore.startPlacement('settle', text)
 }
 
+function useMyLocation() {
+  if (!authStore.user) { uiStore.requireAuth(); return }
+  if (!navigator.geolocation) { geoError.value = 'Geolocation not supported'; return }
+  geoLoading.value = true
+  geoError.value   = ''
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      geoLoading.value = false
+      await mapRef.value?.placeAt(pos.coords.latitude, pos.coords.longitude)
+    },
+    () => {
+      geoLoading.value = false
+      geoError.value   = 'Location access denied'
+    },
+    { timeout: 8000 }
+  )
+}
 </script>
 
 <template>
@@ -88,6 +109,12 @@ function startSettlePlacement() {
         <button id="tribe-place-btn" class="action-btn tribe-place-btn" @click="startTribePlacement">
           ⚔ Mark Location
         </button>
+        <div class="place-alt">
+          <button class="place-alt-btn" :disabled="geoLoading" @click="useMyLocation">
+            {{ geoLoading ? '…' : '📍' }} My location
+          </button>
+<div v-if="geoError" class="place-error">{{ geoError }}</div>
+        </div>
       </div>
 
       <!-- Settlement tab -->
@@ -119,6 +146,12 @@ function startSettlePlacement() {
         <button id="settle-place-btn" class="action-btn settle-place-btn" @click="startSettlePlacement">
           ⚑ Place Settlement
         </button>
+        <div class="place-alt">
+          <button class="place-alt-btn" :disabled="geoLoading" @click="useMyLocation">
+            {{ geoLoading ? '…' : '📍' }} My location
+          </button>
+<div v-if="geoError" class="place-error">{{ geoError }}</div>
+        </div>
       </div>
     </section>
 

@@ -81,7 +81,7 @@ function isProductHidden(t)   { return settlementsStore.hiddenProducts.includes(
       <h2 class="panel-title">Settlements</h2>
       <div class="filter-actions">
         <button class="filter-quick" @click="settlementsStore.showAllSettlements()">All</button>
-        <button class="filter-quick" @click="settlementsStore.hideAllSettlements()">None</button>
+        <button class="filter-quick" @click="settlementsStore.hideAllSettlements(productTypes)">None</button>
       </div>
       <div id="settle-product-filters" class="mf-dots" style="margin-bottom:4px">
         <span
@@ -106,7 +106,12 @@ function isProductHidden(t)   { return settlementsStore.hiddenProducts.includes(
       <label class="mf-own-toggle">
         <input type="checkbox" :checked="settlementsStore.showOwnOnly" @change="settlementsStore.showOwnOnly = !settlementsStore.showOwnOnly" />
         <span class="mf-switch"></span>
-        <span>Hide others</span>
+        <span>Mine only</span>
+      </label>
+      <label class="mf-own-toggle">
+        <input type="checkbox" :checked="settlementsStore.showPublic" @change="settlementsStore.showPublic = !settlementsStore.showPublic" />
+        <span class="mf-switch"></span>
+        <span>Show public</span>
       </label>
     </section>
 

@@ -9,13 +9,15 @@ function loadArr(key) {
 export const useSettlementsStore = defineStore('settlements', () => {
   const STAGES = ref([])
   const playerSettlements = ref({})  // id (string) → plain data object
-  const hiddenStages = ref(loadArr('filter-hidden-stages'))
+  const hiddenStages   = ref(loadArr('filter-hidden-stages'))
   const hiddenProducts = ref(loadArr('filter-hidden-products'))
-  const showOwnOnly = ref(localStorage.getItem('filter-own-only') === 'true')
+  const showOwnOnly  = ref(localStorage.getItem('filter-own-only')   === 'true')
+  const showPublic   = ref(localStorage.getItem('filter-show-public') !== 'false')
 
-  watch(hiddenStages, v => localStorage.setItem('filter-hidden-stages', JSON.stringify(v)), { deep: true })
+  watch(hiddenStages,   v => localStorage.setItem('filter-hidden-stages',   JSON.stringify(v)), { deep: true })
   watch(hiddenProducts, v => localStorage.setItem('filter-hidden-products', JSON.stringify(v)), { deep: true })
-  watch(showOwnOnly, v => localStorage.setItem('filter-own-only', String(v)))
+  watch(showOwnOnly,    v => localStorage.setItem('filter-own-only',        String(v)))
+  watch(showPublic,     v => localStorage.setItem('filter-show-public',     String(v)))
 
   // Placement state
   const settlePlaceMode = ref(false)
@@ -24,12 +26,13 @@ export const useSettlementsStore = defineStore('settlements', () => {
   const isPublic = ref(false)
 
   // Edit modal state
-  const editingId = ref(null)  // string id or null
+  const editingId = ref(null)
 
   function isHidden(s) {
     if (hiddenStages.value.includes(s.stage_id)) return true
     if (s.resource_type && hiddenProducts.value.includes(s.resource_type)) return true
     if (showOwnOnly.value && !s.is_own) return true
+    if (!showPublic.value && s.is_public && !s.is_own) return true
     return false
   }
 
@@ -94,17 +97,21 @@ export const useSettlementsStore = defineStore('settlements', () => {
     hiddenStages.value.splice(0)
     hiddenProducts.value.splice(0)
     showOwnOnly.value = false
+    showPublic.value  = true
   }
 
-  function hideAllSettlements() {
+  // allProductTypes passed from ViewPanel so we can hide all known types, not just placed ones
+  function hideAllSettlements(allProductTypes = []) {
     const allIds = STAGES.value.map(s => s.id)
     hiddenStages.value.splice(0, hiddenStages.value.length, ...allIds)
-    const allProducts = [...new Set(Object.values(playerSettlements.value).map(s => s.resource_type).filter(Boolean))]
-    hiddenProducts.value.splice(0, hiddenProducts.value.length, ...allProducts)
+    const products = allProductTypes.length
+      ? allProductTypes
+      : [...new Set(Object.values(playerSettlements.value).map(s => s.resource_type).filter(Boolean))]
+    hiddenProducts.value.splice(0, hiddenProducts.value.length, ...products)
   }
 
   return {
-    STAGES, playerSettlements, hiddenStages, hiddenProducts, showOwnOnly,
+    STAGES, playerSettlements, hiddenStages, hiddenProducts, showOwnOnly, showPublic,
     settlePlaceMode, stageId, resourceType, isPublic, editingId,
     visibleSettlements, isHidden,
     fetchStages, fetchSettlements, clearSettlements,
