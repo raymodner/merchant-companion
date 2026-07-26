@@ -42,7 +42,10 @@ onMounted(async () => {
 watch(() => authStore.user, async (newUser, oldUser) => {
   if ((newUser == null) !== (oldUser == null)) {
     const regionId = regionStore.currentRegionId
-    if (regionId) await tribesStore.fetchMarkers(regionId)
+    if (regionId) await Promise.all([
+      tribesStore.fetchMarkers(regionId),
+      settlementsStore.fetchSettlements(regionId),
+    ])
   }
 })
 </script>

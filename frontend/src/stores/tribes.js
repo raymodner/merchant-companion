@@ -100,6 +100,8 @@ export const useTribesStore = defineStore('tribes', () => {
   }
 
   function hideAllTribes() {
+    const allIds = TRIBES.value.map(t => t.id)
+    hiddenTribes.value.splice(0, hiddenTribes.value.length, ...allIds)
     hiddenTribeTypes.value.splice(0, hiddenTribeTypes.value.length, 'Camp', 'Selo', 'Burgh')
   }
 

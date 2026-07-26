@@ -99,6 +99,8 @@ export const useSettlementsStore = defineStore('settlements', () => {
   function hideAllSettlements() {
     const allIds = STAGES.value.map(s => s.id)
     hiddenStages.value.splice(0, hiddenStages.value.length, ...allIds)
+    const allProducts = [...new Set(Object.values(playerSettlements.value).map(s => s.resource_type).filter(Boolean))]
+    hiddenProducts.value.splice(0, hiddenProducts.value.length, ...allProducts)
   }
 
   return {

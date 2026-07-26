@@ -108,7 +108,7 @@
   align-items: center;
   justify-content: space-between;
   margin-top: 8px;
-  padding: 8px 14px 0;
+  padding: 8px 14px 16px;
   border-top: 1px solid #2a1c0a;
 }
 #login-btn {
@@ -1271,13 +1271,11 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; }
 #menu-btn:hover { border-color: #c9973a; }
 
 #sidebar-backdrop {
-  display: none;
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.55);
   z-index: 1999;
 }
-#sidebar-backdrop.visible { display: block; }
 
 /* ── Mobile layout ──────────────────────────────────────────────────── */
 @media (max-width: 680px) {
