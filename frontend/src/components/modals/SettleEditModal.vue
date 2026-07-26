@@ -3,10 +3,12 @@ import { ref, computed, watch } from 'vue'
 import AppDropdown from '@/components/AppDropdown.vue'
 import { useSettlementsStore } from '@/stores/settlements.js'
 import { useResourcesStore }   from '@/stores/resources.js'
+import { useUiStore }          from '@/stores/ui.js'
 import { typeIcon } from '@/utils.js'
 
 const settlementsStore = useSettlementsStore()
 const resourcesStore   = useResourcesStore()
+const uiStore          = useUiStore()
 
 const stageId      = ref(null)
 const resourceType = ref('')
@@ -14,6 +16,13 @@ const name         = ref('')
 const isPublic     = ref(false)
 const error        = ref('')
 const loading      = ref(false)
+
+// Location move state
+const locationUnlocked = ref(false)
+const pendingLat       = ref(null)
+const pendingLng       = ref(null)
+const geoLoading       = ref(false)
+const geoError         = ref('')
 
 const stageOptions = computed(() =>
   settlementsStore.STAGES.map(s => ({ value: String(s.id), label: `${s.icon} ${s.name} (tier ${s.tier})` }))
@@ -29,12 +38,6 @@ const resourceTypeOptions = computed(() => [
   ...resourcesStore.resourceTypes.map(t => ({ value: t, label: `${typeIcon(t)} ${t}` })),
 ])
 
-const editingSettlement = computed(() =>
-  settlementsStore.editingId
-    ? settlementsStore.playerSettlements[settlementsStore.editingId]
-    : null
-)
-
 watch(() => settlementsStore.editingId, (id) => {
   if (!id) return
   const s = settlementsStore.playerSettlements[id]
@@ -44,12 +47,42 @@ watch(() => settlementsStore.editingId, (id) => {
     name.value         = s.name || ''
     isPublic.value     = !!s.is_public
   }
-  error.value = ''
+  error.value      = ''
+  locationUnlocked.value = false
+  pendingLat.value = null
+  pendingLng.value = null
+  geoError.value   = ''
 })
 
 function close() {
   settlementsStore.editingId = null
-  error.value = ''
+  error.value            = ''
+  locationUnlocked.value = false
+  pendingLat.value       = null
+  pendingLng.value       = null
+  geoError.value         = ''
+}
+
+function useMyLocation() {
+  if (!navigator.geolocation) { geoError.value = 'Geolocation not supported'; return }
+  geoLoading.value = true
+  geoError.value   = ''
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      geoLoading.value = false
+      pendingLat.value = pos.coords.latitude
+      pendingLng.value = pos.coords.longitude
+    },
+    () => { geoLoading.value = false; geoError.value = 'Location access denied' },
+    { timeout: 8000 }
+  )
+}
+
+function startMapMove() {
+  const id = settlementsStore.editingId
+  settlementsStore.relocatingId = id
+  settlementsStore.editingId    = null
+  uiStore.startPlacement('relocate-settle', 'Click map to move settlement')
 }
 
 async function submit() {
@@ -64,6 +97,7 @@ async function submit() {
       resource_type: resourceType.value.trim() || null,
       name:          name.value.trim() || null,
       is_public:     isPublic.value,
+      ...(pendingLat.value != null && { lat: pendingLat.value, lng: pendingLng.value }),
     })
     if (err) error.value = err
     else close()
@@ -113,6 +147,24 @@ async function submit() {
               <span class="mf-switch"></span>
               <span>Public (visible to all)</span>
             </label>
+          </div>
+
+          <div style="margin: 10px 0">
+            <button type="button" class="location-lock-btn" @click="locationUnlocked = !locationUnlocked">
+              {{ locationUnlocked ? '🔓' : '🔒' }} {{ locationUnlocked ? 'Move location' : 'Location locked' }}
+            </button>
+            <div v-if="locationUnlocked" class="location-actions">
+              <div style="display:flex;gap:6px">
+                <button type="button" class="place-alt-btn" style="flex:1" :disabled="geoLoading" @click="useMyLocation">
+                  {{ geoLoading ? '…' : '📍' }} My location
+                </button>
+                <button type="button" class="place-alt-btn" style="flex:1" @click="startMapMove">
+                  🗺 Move on map
+                </button>
+              </div>
+              <div v-if="pendingLat !== null" class="location-pending">✓ Location captured</div>
+              <div v-if="geoError" class="place-error">{{ geoError }}</div>
+            </div>
           </div>
 
           <div id="settle-edit-error">{{ error }}</div>

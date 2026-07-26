@@ -25,8 +25,9 @@ export const useSettlementsStore = defineStore('settlements', () => {
   const resourceType = ref('')
   const isPublic = ref(false)
 
-  // Edit modal state
-  const editingId = ref(null)
+  // Edit / relocate modal state
+  const editingId    = ref(null)
+  const relocatingId = ref(null)
 
   function isHidden(s) {
     if (hiddenStages.value.includes(s.stage_id)) return true
@@ -112,7 +113,7 @@ export const useSettlementsStore = defineStore('settlements', () => {
 
   return {
     STAGES, playerSettlements, hiddenStages, hiddenProducts, showOwnOnly, showPublic,
-    settlePlaceMode, stageId, resourceType, isPublic, editingId,
+    settlePlaceMode, stageId, resourceType, isPublic, editingId, relocatingId,
     visibleSettlements, isHidden,
     fetchStages, fetchSettlements, clearSettlements,
     createSettlement, updateSettlement, deleteSettlement,

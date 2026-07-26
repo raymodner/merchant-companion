@@ -1,9 +1,11 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useTribesStore } from '@/stores/tribes.js'
+import { useUiStore }     from '@/stores/ui.js'
 import { TRIBE_TYPE_ICONS } from '@/utils.js'
 
 const tribesStore = useTribesStore()
+const uiStore     = useUiStore()
 const tribeTypes  = ['Camp', 'Selo', 'Burgh']
 
 const selectedTribeId = ref(null)
@@ -11,9 +13,12 @@ const selectedType    = ref('Camp')
 const error           = ref('')
 const loading         = ref(false)
 
-const editingMarker = computed(() =>
-  tribesStore.editingId ? tribesStore.markers[tribesStore.editingId] : null
-)
+// Location move state
+const locationUnlocked = ref(false)
+const pendingLat       = ref(null)
+const pendingLng       = ref(null)
+const geoLoading       = ref(false)
+const geoError         = ref('')
 
 watch(() => tribesStore.editingId, (id) => {
   if (!id) return
@@ -22,12 +27,42 @@ watch(() => tribesStore.editingId, (id) => {
     selectedTribeId.value = m.tribe_id
     selectedType.value    = m.type
   }
-  error.value = ''
+  error.value            = ''
+  locationUnlocked.value = false
+  pendingLat.value       = null
+  pendingLng.value       = null
+  geoError.value         = ''
 })
 
 function close() {
-  tribesStore.editingId = null
-  error.value = ''
+  tribesStore.editingId  = null
+  error.value            = ''
+  locationUnlocked.value = false
+  pendingLat.value       = null
+  pendingLng.value       = null
+  geoError.value         = ''
+}
+
+function useMyLocation() {
+  if (!navigator.geolocation) { geoError.value = 'Geolocation not supported'; return }
+  geoLoading.value = true
+  geoError.value   = ''
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      geoLoading.value = false
+      pendingLat.value = pos.coords.latitude
+      pendingLng.value = pos.coords.longitude
+    },
+    () => { geoLoading.value = false; geoError.value = 'Location access denied' },
+    { timeout: 8000 }
+  )
+}
+
+function startMapMove() {
+  const id = tribesStore.editingId
+  tribesStore.relocatingId = id
+  tribesStore.editingId    = null
+  uiStore.startPlacement('relocate-tribe', 'Click map to move tribe marker')
 }
 
 async function submit() {
@@ -39,6 +74,7 @@ async function submit() {
     const err = await tribesStore.updateMarker(tribesStore.editingId, {
       tribe_id: selectedTribeId.value,
       type: selectedType.value,
+      ...(pendingLat.value != null && { lat: pendingLat.value, lng: pendingLng.value }),
     })
     if (err) error.value = err
     else close()
@@ -77,6 +113,24 @@ async function submit() {
                 :class="{ active: selectedType === type }"
                 @click="selectedType = type"
               >{{ TRIBE_TYPE_ICONS[type] }} {{ type }}</button>
+            </div>
+          </div>
+
+          <div style="margin: 10px 0">
+            <button type="button" class="location-lock-btn" @click="locationUnlocked = !locationUnlocked">
+              {{ locationUnlocked ? '🔓' : '🔒' }} {{ locationUnlocked ? 'Move location' : 'Location locked' }}
+            </button>
+            <div v-if="locationUnlocked" class="location-actions">
+              <div style="display:flex;gap:6px">
+                <button type="button" class="place-alt-btn" style="flex:1" :disabled="geoLoading" @click="useMyLocation">
+                  {{ geoLoading ? '…' : '📍' }} My location
+                </button>
+                <button type="button" class="place-alt-btn" style="flex:1" @click="startMapMove">
+                  🗺 Move on map
+                </button>
+              </div>
+              <div v-if="pendingLat !== null" class="location-pending">✓ Location captured</div>
+              <div v-if="geoError" class="place-error">{{ geoError }}</div>
             </div>
           </div>
 

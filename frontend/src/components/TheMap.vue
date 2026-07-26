@@ -210,6 +210,7 @@ function syncTribeMarkers() {
       marker.addTo(map)
       tribeInstances[id] = marker
     } else {
+      tribeInstances[id].setLatLng([parseFloat(m.lat), parseFloat(m.lng)])
       tribeInstances[id].setIcon(makeTribeIcon(m.tribe_color, m.type))
       tribeInstances[id].getPopup()?.setContent(tribePopupHtml(m))
     }
@@ -308,6 +309,7 @@ function syncSettlements() {
       marker.addTo(map)
       settlementInstances[id] = marker
     } else {
+      settlementInstances[id].setLatLng([parseFloat(s.lat), parseFloat(s.lng)])
       settlementInstances[id].setIcon(icon)
       settlementInstances[id].getPopup()?.setContent(settlementPopupHtml(s))
     }
@@ -326,6 +328,22 @@ function applySettlementVisibility() {
 // ── Map event handlers ────────────────────────────────────────────────────
 async function onMapClick(e) {
   const { lat, lng } = e.latlng
+
+  if (uiStore.placementMode === 'relocate-tribe') {
+    const id = tribesStore.relocatingId
+    if (id && authStore.user) await tribesStore.updateMarker(id, { lat, lng })
+    tribesStore.relocatingId = null
+    uiStore.cancelPlacement()
+    return
+  }
+
+  if (uiStore.placementMode === 'relocate-settle') {
+    const id = settlementsStore.relocatingId
+    if (id && authStore.user) await settlementsStore.updateSettlement(id, { lat, lng })
+    settlementsStore.relocatingId = null
+    uiStore.cancelPlacement()
+    return
+  }
 
   if (uiStore.placementMode === 'tribe') {
     if (!authStore.user) { uiStore.cancelPlacement(); uiStore.requireAuth(); return }

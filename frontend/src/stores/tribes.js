@@ -19,7 +19,8 @@ export const useTribesStore = defineStore('tribes', () => {
   const tribePlaceMode = ref(false)
   const activeTribeId = ref(null)
   const activeTribeType = ref('Camp')
-  const editingId = ref(null)        // string id of marker being edited, or null
+  const editingId    = ref(null)     // string id of marker being edited, or null
+  const relocatingId = ref(null)     // string id of marker being relocated, or null
 
   function isHidden(m) {
     return hiddenTribes.value.includes(m.tribe_id) || hiddenTribeTypes.value.includes(m.type)
@@ -67,6 +68,8 @@ export const useTribesStore = defineStore('tribes', () => {
       const tribe = TRIBES.value.find(t => t.id === tribeId)
       markers.value[id] = {
         ...existing,
+        lat: data.lat ?? existing.lat,
+        lng: data.lng ?? existing.lng,
         tribe_id: tribeId,
         tribe_name: tribe?.name ?? existing.tribe_name,
         tribe_color: tribe?.color ?? existing.tribe_color,
@@ -109,7 +112,7 @@ export const useTribesStore = defineStore('tribes', () => {
     TRIBES, markers, hiddenTribes, hiddenTribeTypes,
     tribePlaceMode, activeTribeId, activeTribeType, editingId,
     visibleMarkers, isHidden,
-    fetchTribes, fetchMarkers, clearMarkers, createMarker, updateMarker, deleteMarker,
+    fetchTribes, fetchMarkers, clearMarkers, createMarker, updateMarker, deleteMarker, relocatingId,
     toggleHideTribe, toggleHideType, showAllTribes, hideAllTribes,
   }
 })

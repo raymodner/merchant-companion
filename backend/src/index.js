@@ -353,10 +353,14 @@ app.post('/api/tribe-markers', auth, async (req, res) => {
 
 app.patch('/api/tribe-markers/:id', auth, async (req, res) => {
   if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid id' })
-  const { type, tribe_id } = req.body
+  const { type, tribe_id, lat, lng } = req.body
   if (type && !['Camp', 'Selo', 'Burgh'].includes(type))
     return res.status(400).json({ error: 'type must be Camp, Selo, or Burgh' })
   if (tribe_id && !isUuid(tribe_id)) return res.status(400).json({ error: 'Invalid tribe_id' })
+  if (lat != null && (isNaN(parseFloat(lat)) || parseFloat(lat) < -90  || parseFloat(lat) > 90))
+    return res.status(400).json({ error: 'Invalid lat' })
+  if (lng != null && (isNaN(parseFloat(lng)) || parseFloat(lng) < -180 || parseFloat(lng) > 180))
+    return res.status(400).json({ error: 'Invalid lng' })
   try {
     const tribeTypeId = type ? await resolveTribeType(type) : undefined
     const { count } = await prisma.tribeMarker.updateMany({
@@ -364,6 +368,8 @@ app.patch('/api/tribe-markers/:id', auth, async (req, res) => {
       data: {
         ...(tribeTypeId !== undefined && { tribeTypeId }),
         ...(tribe_id && { tribeId: tribe_id }),
+        ...(lat != null && { lat: parseFloat(lat) }),
+        ...(lng != null && { lng: parseFloat(lng) }),
       },
     })
     if (!count) return res.status(404).json({ error: 'Not found or not yours' })
@@ -479,12 +485,16 @@ app.post('/api/player-settlements', auth, async (req, res) => {
 
 app.patch('/api/player-settlements/:id', auth, async (req, res) => {
   if (!isUuid(req.params.id)) return res.status(400).json({ error: 'Invalid id' })
-  const { stage_id, resource_type, name, is_public } = req.body
+  const { stage_id, resource_type, name, is_public, lat, lng } = req.body
   if (stage_id != null && !isUuid(stage_id)) return res.status(400).json({ error: 'Invalid stage_id' })
   if (name != null && String(name).length > 200)
     return res.status(400).json({ error: 'Name must be 200 characters or fewer' })
   if (resource_type != null && String(resource_type).length > 30)
     return res.status(400).json({ error: 'Invalid resource_type' })
+  if (lat != null && (isNaN(parseFloat(lat)) || parseFloat(lat) < -90  || parseFloat(lat) > 90))
+    return res.status(400).json({ error: 'Invalid lat' })
+  if (lng != null && (isNaN(parseFloat(lng)) || parseFloat(lng) < -180 || parseFloat(lng) > 180))
+    return res.status(400).json({ error: 'Invalid lng' })
   try {
     const resourceTypeId = resource_type !== undefined
       ? await resolveResourceType(resource_type)
@@ -496,6 +506,8 @@ app.patch('/api/player-settlements/:id', auth, async (req, res) => {
         ...(resourceTypeId !== undefined && { resourceTypeId }),
         ...(name !== undefined && { name: name || null }),
         ...(is_public != null && { isPublic: is_public === true }),
+        ...(lat != null && { lat: parseFloat(lat) }),
+        ...(lng != null && { lng: parseFloat(lng) }),
       },
     })
     if (!count) return res.status(404).json({ error: 'Not found or not yours' })
