@@ -37,6 +37,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: prod
+      args:
+        VITE_APP_URL: ${APP_URL}
     container_name: terrain_frontend
     restart: always
     ports:

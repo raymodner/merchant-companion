@@ -12,6 +12,8 @@ WORKDIR /app
 COPY --chown=node:node package.json pnpm-lock.yaml* ./
 RUN pnpm install --ignore-scripts
 COPY --chown=node:node . .
+ARG VITE_APP_URL=http://localhost:5174
+ENV VITE_APP_URL=$VITE_APP_URL
 RUN pnpm build
 
 FROM nginx:alpine AS prod
