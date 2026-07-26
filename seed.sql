@@ -304,11 +304,16 @@ ON CONFLICT (resource_id) DO UPDATE SET
 
 -- ── Map regions (UPSERT — preserves IDs referenced by user-data FK cols) ──
 
--- Remove large unsplit regions (safe: cascades through cell_paints/markers first)
-DELETE FROM cell_paints        WHERE region_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL);
-DELETE FROM tribe_markers      WHERE region_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL);
-DELETE FROM player_settlements WHERE region_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL);
-DELETE FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL;
+-- Remove all Scandinavian regions (children first to avoid FK violations, then parents)
+DELETE FROM cell_paints        WHERE region_id IN (SELECT id FROM map_regions WHERE parent_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL));
+DELETE FROM tribe_markers      WHERE region_id IN (SELECT id FROM map_regions WHERE parent_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL));
+DELETE FROM player_settlements WHERE region_id IN (SELECT id FROM map_regions WHERE parent_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL));
+DELETE FROM map_regions WHERE parent_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL);
+
+DELETE FROM cell_paints        WHERE region_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Norway North','Norway South','Sweden','Sweden North','Sweden South','Finland','Finland North','Finland South') AND parent_id IS NULL);
+DELETE FROM tribe_markers      WHERE region_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Norway North','Norway South','Sweden','Sweden North','Sweden South','Finland','Finland North','Finland South') AND parent_id IS NULL);
+DELETE FROM player_settlements WHERE region_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Norway North','Norway South','Sweden','Sweden North','Sweden South','Finland','Finland North','Finland South') AND parent_id IS NULL);
+DELETE FROM map_regions WHERE name IN ('Norway','Norway North','Norway South','Sweden','Sweden North','Sweden South','Finland','Finland North','Finland South') AND parent_id IS NULL;
 
 DELETE FROM cell_paints        WHERE region_id IN (SELECT id FROM map_regions WHERE name = 'Alaska');
 DELETE FROM tribe_markers      WHERE region_id IN (SELECT id FROM map_regions WHERE name = 'Alaska');
@@ -329,15 +334,29 @@ INSERT INTO map_regions (name, parent_id, lat_min, lat_max, lng_min, lng_max, ce
   ('Switzerland',    NULL, 45.8, 47.8,   5.9,  10.5, 46.8,   8.2, 8),
   ('Austria',        NULL, 46.4, 49.0,   9.5,  17.2, 47.7,  13.3, 7),
   ('Denmark',        NULL, 54.6, 57.8,   8.1,  15.2, 56.2,  11.7, 7),
-  ('Norway South',   NULL, 57.9, 64.5,   4.5,  31.2, 61.2,   8.0, 7),
-  ('Norway North',   NULL, 64.5, 71.2,   4.5,  31.2, 67.8,  15.0, 6),
-  ('Sweden South',   NULL, 55.3, 62.5,  11.0,  24.2, 58.8,  17.5, 7),
-  ('Sweden North',   NULL, 62.5, 69.1,  11.0,  24.2, 65.5,  17.5, 6),
-  ('Finland South',  NULL, 59.8, 65.0,  20.0,  31.6, 62.4,  25.0, 7),
-  ('Finland North',  NULL, 65.0, 70.1,  20.0,  31.6, 67.5,  26.0, 6),
+  ('Norway',         NULL, 57.9, 71.2,   4.5,  31.2, 64.6,  15.0, 5),
+  ('Sweden',         NULL, 55.3, 69.1,  11.0,  24.2, 62.2,  17.5, 5),
+  ('Finland',        NULL, 59.8, 70.1,  20.0,  31.6, 64.5,  26.0, 5),
   ('Poland',         NULL, 49.0, 54.9,  14.1,  24.2, 52.0,  19.1, 6),
   ('Czech Republic', NULL, 48.6, 51.1,  12.1,  18.9, 49.8,  15.5, 7),
   ('United States',  NULL, 24.5, 49.4,-124.8, -66.9, 39.5, -98.5, 5)
+ON CONFLICT (name, COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid)) DO UPDATE SET
+  lat_min = EXCLUDED.lat_min, lat_max = EXCLUDED.lat_max,
+  lng_min = EXCLUDED.lng_min, lng_max = EXCLUDED.lng_max,
+  center_lat = EXCLUDED.center_lat, center_lng = EXCLUDED.center_lng,
+  zoom = EXCLUDED.zoom;
+
+INSERT INTO map_regions (name, parent_id, lat_min, lat_max, lng_min, lng_max, center_lat, center_lng, zoom)
+SELECT v.name, p.id, v.lat_min, v.lat_max, v.lng_min, v.lng_max, v.center_lat, v.center_lng, v.zoom
+FROM (VALUES
+  ('Norway',  'South', 57.9, 64.5,  4.5, 31.2, 61.2,  8.0, 7),
+  ('Norway',  'North', 64.5, 71.2,  4.5, 31.2, 67.8, 15.0, 6),
+  ('Sweden',  'South', 55.3, 62.5, 11.0, 24.2, 58.8, 17.5, 7),
+  ('Sweden',  'North', 62.5, 69.1, 11.0, 24.2, 65.5, 17.5, 6),
+  ('Finland', 'South', 59.8, 65.0, 20.0, 31.6, 62.4, 25.0, 7),
+  ('Finland', 'North', 65.0, 70.1, 20.0, 31.6, 67.5, 26.0, 6)
+) AS v(country, name, lat_min, lat_max, lng_min, lng_max, center_lat, center_lng, zoom)
+JOIN map_regions p ON p.name = v.country AND p.parent_id IS NULL
 ON CONFLICT (name, COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid)) DO UPDATE SET
   lat_min = EXCLUDED.lat_min, lat_max = EXCLUDED.lat_max,
   lng_min = EXCLUDED.lng_min, lng_max = EXCLUDED.lng_max,

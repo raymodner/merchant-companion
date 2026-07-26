@@ -5,21 +5,25 @@ import { api } from '@/api/index.js'
 function slugify(s) { return s.toLowerCase().replace(/\s+/g, '-') }
 
 export const useRegionStore = defineStore('region', () => {
-  const regions = ref({ countries: {}, states: {} })
+  const regions = ref({ countries: {}, subregions: {} })
   const currentCountry = ref(localStorage.getItem('selected-country') || 'Netherlands')
   const currentState = ref(localStorage.getItem('selected-state') || null)
 
+  const currentSubregions = computed(() => regions.value.subregions[currentCountry.value] || {})
+
+  const hasSubregions = computed(() => Object.keys(currentSubregions.value).length > 0)
+
   const regionKey = computed(() => {
-    if (currentCountry.value === 'United States' && currentState.value) {
-      return 'us-' + slugify(currentState.value)
+    if (hasSubregions.value && currentState.value) {
+      return slugify(currentCountry.value) + '-' + slugify(currentState.value)
     }
     return slugify(currentCountry.value)
   })
 
   const currentBounds = computed(() => {
-    if (currentCountry.value === 'United States') {
+    if (hasSubregions.value) {
       if (!currentState.value) return null
-      return regions.value.states[currentState.value] || null
+      return currentSubregions.value[currentState.value] || null
     }
     return regions.value.countries[currentCountry.value] || null
   })
@@ -28,18 +32,15 @@ export const useRegionStore = defineStore('region', () => {
 
   async function fetchRegions() {
     const data = await api.getRegions()
-    regions.value = { countries: data.countries || {}, states: data.states || {} }
+    regions.value = { countries: data.countries || {}, subregions: data.subregions || {} }
   }
 
   async function setCountry(v) {
     currentCountry.value = v
     localStorage.setItem('selected-country', v)
-    if (v !== 'United States') {
-      currentState.value = null
-      localStorage.removeItem('selected-state')
-    }
-    // Save preferences silently — fails quietly if not logged in
-    api.savePreferences(v, currentState.value)
+    currentState.value = null
+    localStorage.removeItem('selected-state')
+    api.savePreferences(v, null)
   }
 
   async function setState(v) {
@@ -50,7 +51,8 @@ export const useRegionStore = defineStore('region', () => {
   }
 
   return {
-    regions, currentCountry, currentState, regionKey, currentBounds, currentRegionId,
+    regions, currentCountry, currentState, currentSubregions, hasSubregions,
+    regionKey, currentBounds, currentRegionId,
     fetchRegions, setCountry, setState,
   }
 })

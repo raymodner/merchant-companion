@@ -11,19 +11,15 @@ const authStore   = useAuthStore()
 const uiStore     = useUiStore()
 const regionStore = useRegionStore()
 
-const countryOptions = computed(() => {
-  const keys = Object.keys(regionStore.regions.countries).sort()
-  const hasUS = Object.keys(regionStore.regions.states).length > 0
-  const all   = hasUS ? ['United States', ...keys.filter(k => k !== 'United States')].sort() : keys
-  return all.map(c => ({ value: c, label: c }))
-})
+const countryOptions = computed(() =>
+  Object.keys(regionStore.regions.countries).sort().map(c => ({ value: c, label: c }))
+)
 
-const stateOptions = computed(() => {
-  if (regionStore.currentCountry !== 'United States') return []
-  return Object.keys(regionStore.regions.states).sort().map(s => ({ value: s, label: s }))
-})
+const stateOptions = computed(() =>
+  Object.keys(regionStore.currentSubregions).sort().map(s => ({ value: s, label: s }))
+)
 
-const showStateDropdown = computed(() => regionStore.currentCountry === 'United States')
+const showStateDropdown = computed(() => regionStore.hasSubregions)
 
 async function onCountryChange(val) { await regionStore.setCountry(val) }
 async function onStateChange(val)   { await regionStore.setState(val) }
@@ -48,7 +44,7 @@ async function handleLogout() { await authStore.logout() }
     </div>
     <div v-if="showStateDropdown" id="state-select-wrap">
       <AppDropdown
-        :options="[{ value: '', label: 'Select state…' }, ...stateOptions]"
+        :options="[{ value: '', label: 'Select region…' }, ...stateOptions]"
         :model-value="regionStore.currentState || ''"
         cls="sidebar"
         @update:model-value="val => onStateChange(val || null)"

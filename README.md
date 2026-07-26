@@ -1,109 +1,88 @@
-# Merchant Terrain Map
+# Merchant Companion
 
-A collaborative fantasy/medieval terrain map editor. Users can paint terrain types onto a geographic grid, look up resource locations, and track production chains — all shared in real time across accounts.
+A collaborative fantasy/medieval terrain map editor. Users can paint terrain types onto a geographic grid, place tribe markers and player settlements, and look up resource locations with production chains — all shared across accounts.
 
 ## Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Vanilla JS, Leaflet.js, Vite |
-| Backend | Node.js, Express 5 |
+| Frontend | Vue 3 + Pinia + Vite |
+| Map | Leaflet.js |
+| Backend | Express 5 + Prisma |
 | Database | PostgreSQL 15 |
-| Auth | JWT (jsonwebtoken + bcryptjs) |
-| Package manager | pnpm |
+| Auth | JWT via HttpOnly cookie |
+| Package manager | pnpm (monorepo) |
 | Container | Docker Compose |
 
 ## Quick start
 
 ```bash
 cp .env.dist .env
-# Edit .env — set a strong DB_PASSWORD and JWT_SECRET
+# Edit .env — set DB_PASSWORD and JWT_SECRET
 docker compose up --build -d
 ```
 
 - **Frontend** → http://localhost:5174
 - **API** → http://localhost:3001
-- **DB** → localhost:5432
 
-The database is initialised automatically on first boot: `setup.sql` creates the schema and `seed.sql` populates terrains, resources, locations, production chains, and map regions.
+Apply schema and seed game data on first boot:
+
+```bash
+docker exec -i terrain_db psql -U terrain -d terrain_map < setup.sql
+docker exec -i terrain_db psql -U terrain -d terrain_map < seed.sql
+```
 
 ## Environment variables
 
-Copy `.env.dist` to `.env` and fill in:
+Copy `.env.dist` → `.env` at the repo root.
 
 | Variable | Description |
 |---|---|
 | `DB_NAME` | PostgreSQL database name |
 | `DB_USER` | PostgreSQL user |
 | `DB_PASSWORD` | PostgreSQL password |
-| `JWT_SECRET` | Secret used to sign JWTs — generate with `openssl rand -hex 64` |
-| `NODE_ENV` | `development` or `production` |
-| `PORT` | API port (default `3001`) |
-
-## Project structure
-
-```
-├── index.html          # Single-page app shell
-├── main.js             # All frontend logic (Leaflet map, UI, API calls)
-├── main.css            # All styles
-├── vite.config.js      # Vite dev server — proxies /api → Express
-├── server/
-│   ├── index.js        # Express app & all API routes
-│   ├── routes/auth.js  # Register, login, /me, preferences
-│   ├── auth.js         # JWT middleware
-│   └── db.js           # pg.Pool
-├── setup.sql           # Schema (CREATE TABLE IF NOT EXISTS + ALTER TABLE migrations)
-├── seed.sql            # Game data — re-runnable (TRUNCATEs then re-inserts)
-├── Dockerfile          # API container (node:20-slim)
-├── Dockerfile.frontend # Frontend container (node:20-alpine)
-└── docker-compose.yml  # Orchestrates db, api, frontend
-```
-
-## Database schema
-
-| Table | Purpose |
-|---|---|
-| `users` | Accounts, bcrypt passwords, preferred region |
-| `cell_paints` | Full paint history — `DISTINCT ON (cell_key)` returns latest |
-| `terrains` | 8 terrain types with colour and icon |
-| `resources` | Raw materials (Ore, Stone, Wood, Raw Food) |
-| `resource_locations` | Where each resource appears (terrain × location × star rating 0–5) |
-| `production_chain` | Raw → Processed → Final product mappings |
-| `map_regions` | Countries and US states with bounding boxes |
+| `JWT_SECRET` | Signs JWTs — generate with `openssl rand -hex 64` |
+| `ALLOWED_ORIGINS` | Comma-separated allowed CORS origins |
 
 ## Common operations
 
-**Re-seed game data** (does not touch `users` or `cell_paints`):
 ```bash
+# Restart API after backend code changes
+docker compose restart api
+
+# Full rebuild after adding npm packages
+docker compose down && docker compose up --build -d
+
+# Apply schema migrations
+docker exec -i terrain_db psql -U terrain -d terrain_map < setup.sql
+
+# Re-seed game data (preserves users, cell_paints, markers, settlements)
 docker exec -i terrain_db psql -U terrain -d terrain_map < seed.sql
 ```
 
-**Apply schema changes**:
+## Production deployment
+
+Use `docker-compose.prod.yml` with a host-level Caddy reverse proxy.
+
 ```bash
+cp .env.dist .env  # fill in production values
+docker compose -f docker-compose.prod.yml up -d --build
+
 docker exec -i terrain_db psql -U terrain -d terrain_map < setup.sql
+docker exec -i terrain_db psql -U terrain -d terrain_map < seed.sql
 ```
 
-**Restart API after code changes**:
-```bash
-docker compose restart api
-```
-
-**Full rebuild** (e.g. after adding npm packages):
-```bash
-docker compose down && docker compose up --build -d
-```
-
-## Planned
-
-- **Registration whitelist** — restrict sign-ups to a list of allowed email addresses or domains, so the app can be shared privately without being open to anyone
-- **Forgot password / reset flow** — email-based password reset: request a time-limited token, receive a link, set a new password
+The prod compose binds the frontend to `127.0.0.1:8080`. Caddy handles TLS termination and proxies public traffic.
 
 ## Features
 
-- **Shared terrain painting** — grid is shared across all users; latest paint per cell wins, full history is preserved
+- **Shared terrain painting** — 0.1° grid shared across all users; latest paint per cell wins, full history preserved
 - **Paint mode** — explicit toggle prevents accidental edits; selecting a terrain auto-enables it
-- **Terrain filters** — show/hide terrain types on the map; hidden cells revert to the empty grid style rather than disappearing
-- **Resource lookup** — search by resource name, type, terrain, production chain output, and minimum star rating
-- **Star ratings** — 0 means unknown (always shown regardless of filter), 1–5 are known quality ratings; editable in edit mode
-- **Production chains** — trace raw material → processed good → final products (Armour, Weapons, Luxury, etc.)
-- **Per-user region preference** — selected country/state is stored server-side and restored on next login
+- **Terrain filters** — show/hide terrain types; hidden cells revert to the empty style
+- **Tribe markers** — place and label tribe locations per region, filterable by tribe and type
+- **Player settlements** — track settlement stage (Camp → Metropolis, Abbey, Castle), resource focus, and visibility
+- **Resource lookup** — search by name, type, terrain, production chain output, and minimum star rating
+- **Star ratings** — 0 = unknown (always shown), 1–5 = rated quality; editable when logged in
+- **Production chains** — trace raw material → processed good → final products
+- **Region selector** — country and US state dropdowns with type-to-filter; preference stored server-side per user
+- **Auth** — register/login with HttpOnly JWT cookie; password change in-app

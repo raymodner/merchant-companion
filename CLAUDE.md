@@ -40,7 +40,7 @@ frontend/             Vue 3 + Vite + Pinia SPA
   src/
     App.vue           Root component — startup sequence, provides mapRef
     main.js           createApp, Pinia, mount
-    assets/main.css   All styles (verbatim copy of original main.css)
+    assets/main.css   All styles
     api/index.js      All API calls (fetch, credentials: 'include')
     utils.js          TRIBE_TYPE_ICONS, typeIcon()
     stores/
@@ -69,7 +69,7 @@ frontend/             Vue 3 + Vite + Pinia SPA
 ## Database
 
 Schema is in `setup.sql` (uses `CREATE TABLE IF NOT EXISTS` + `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for safe re-runs).
-Game data is in `seed.sql` (TRUNCATEs and re-inserts — safe to re-run, does not touch `users` or `cell_paints`).
+Game data is in `seed.sql` (pure upserts — safe to re-run; does not touch `users`, `cell_paints`, `tribe_markers`, or `player_settlements` except when explicitly deleting replaced regions).
 
 Apply schema changes:
 ```bash
@@ -91,6 +91,7 @@ docker exec -i terrain_db psql -U terrain -d terrain_map -c "SELECT ..."
 - **`cell_paints`** — append-only paint history. Latest paint per cell is retrieved with `DISTINCT ON (cell_key) ORDER BY cell_key, painted_at DESC`. Never update rows, only insert.
 - **`resource_locations.stars`** — `0` means unknown (always shown in filters regardless of min-stars setting); `1–5` are actual ratings. The DB constraint is `CHECK (stars BETWEEN 0 AND 5)`.
 - **`users.preferred_country / preferred_state`** — stored server-side, applied when the user logs in if different from the current view.
+- **`map_regions`** — countries have `parent_id IS NULL`; US states have `parent_id` pointing to the United States row. Large countries are split into geographic sub-regions rather than using a coarser grid step (e.g. Norway North / Norway South, Alaska Northeast / Alaska Northwest / etc.). When replacing a region in `seed.sql`, explicitly DELETE its dependent `cell_paints`, `tribe_markers`, and `player_settlements` rows first, then DELETE the region, then INSERT the replacements.
 
 ### Prisma
 
@@ -114,10 +115,12 @@ All Leaflet objects (`L.map`, `L.rectangle`, `L.marker`) live **only** in `TheMa
 ### Custom dropdowns
 `AppDropdown.vue` uses `Teleport to="body"` with `position: fixed` and `getBoundingClientRect()` — this avoids clipping by `overflow-y: auto` ancestors (sidebar, resource modal overlay).
 
+It includes a sticky filter input at the top of the list (auto-focused on open) that narrows options as you type. Only one dropdown can be open at a time: opening any instance dispatches `app-dd-close-others` (a `CustomEvent` on `document` with a `Symbol` as `detail`) so other instances close themselves.
+
 For sidebar dropdowns pass `cls="sidebar"` which applies `.sidebar-btn` / `.sidebar-list` CSS.
 
 ### Terrain painting
-Grid cells are `L.rectangle` instances stored in `cells[cellKey]` inside TheMap. All painting is gated on `paintStore.paintMode === true`. Selecting a terrain or eraser auto-enables paint mode. Map dragging is disabled only while `paintMode` is true and the mouse button is held.
+Grid cells are `L.rectangle` instances stored in `cells[cellKey]` inside TheMap. All painting is gated on `paintStore.paintMode === true`. Selecting a terrain or eraser auto-enables paint mode. Map dragging is disabled only while `paintMode` is true and the mouse button is held. Painted cells use `fillOpacity: 0.40`; the `.swatch` CSS matches with `opacity: 0.4`.
 
 ### TERRAINS object
 `paintStore.TERRAINS` is a `ref({})` populated at startup from `GET /api/terrains`. All terrain-dependent UI (colour swatches, filter rows, resource modal dropdown) is rendered from this reactive object.
