@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import AppDropdown   from './AppDropdown.vue'
 import ViewPanel     from './panels/ViewPanel.vue'
 import EditPanel     from './panels/EditPanel.vue'
@@ -25,6 +25,15 @@ async function onCountryChange(val) { await regionStore.setCountry(val) }
 async function onStateChange(val)   { await regionStore.setState(val) }
 
 async function handleLogout() { await authStore.logout() }
+
+const isDark = ref(document.documentElement.dataset.theme !== 'light')
+
+function toggleTheme() {
+  const next = isDark.value ? 'light' : 'dark'
+  document.documentElement.dataset.theme = next
+  localStorage.setItem('color-theme', next)
+  isDark.value = next === 'dark'
+}
 </script>
 
 <template>
@@ -32,6 +41,20 @@ async function handleLogout() { await authStore.logout() }
 
     <div id="sidebar-header">
       <h1>Merchant Companion</h1>
+      <div id="sidebar-top-bar">
+        <template v-if="authStore.user">
+          <span id="username-display">{{ authStore.user.username }}</span>
+          <div id="user-actions">
+            <button id="change-pw-btn" @click="uiStore.changePasswordModalOpen = true">Password</button>
+            <button id="logout-btn" @click="handleLogout">Log out</button>
+            <button class="theme-toggle-btn" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleTheme">{{ isDark ? '☀' : '☾' }}</button>
+          </div>
+        </template>
+        <template v-else>
+          <button id="login-btn" @click="uiStore.requireAuth()">Log In / Register</button>
+          <button class="theme-toggle-btn" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'" @click="toggleTheme">{{ isDark ? '☀' : '☾' }}</button>
+        </template>
+      </div>
     </div>
 
     <div id="country-select-wrap">
@@ -67,18 +90,6 @@ async function handleLogout() { await authStore.logout() }
     <ViewPanel v-if="uiStore.mode === 'view'" />
     <EditPanel v-else />
 
-    <div id="user-bar">
-      <template v-if="authStore.user">
-        <span id="username-display">{{ authStore.user.username }}</span>
-        <div id="user-actions">
-          <button id="change-pw-btn" @click="uiStore.changePasswordModalOpen = true">Password</button>
-          <button id="logout-btn" @click="handleLogout">Log out</button>
-        </div>
-      </template>
-      <template v-else>
-        <button id="login-btn" @click="uiStore.requireAuth()">Log In / Register</button>
-      </template>
-    </div>
 
   </aside>
 </template>
