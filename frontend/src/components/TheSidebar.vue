@@ -33,6 +33,8 @@ function toggleTheme() {
   document.documentElement.dataset.theme = next
   localStorage.setItem('color-theme', next)
   isDark.value = next === 'dark'
+  const tc = document.querySelector('meta[name="theme-color"]')
+  if (tc) tc.content = next === 'light' ? '#f5ead0' : '#0d0702'
 }
 </script>
 
