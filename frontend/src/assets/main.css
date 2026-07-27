@@ -163,7 +163,7 @@
 
 /* ── Reset & base ───────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; }
+html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; background: #0d0702; color-scheme: dark; }
 
 /* ── Sidebar ────────────────────────────────────────────────────── */
 #sidebar {
@@ -1393,6 +1393,12 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; }
   .sp-btn        { padding: 5px 10px; }
   .auth-submit   { padding: 11px 0; }
   .auth-input    { padding: 11px 12px; }
+
+  /* Prevent iOS auto-zoom on input focus (triggers when font-size < 16px) */
+  .res-dd-filter-input,
+  .auth-input,
+  .coord-input,
+  input, select { font-size: 16px; }
 
   /* Placement bar: full-width at top */
   #settle-placement-bar {
