@@ -104,11 +104,6 @@ function isProductHidden(t)   { return settlementsStore.hiddenProducts.includes(
         >{{ stage.icon }} {{ stage.name }}</button>
       </div>
       <label class="mf-own-toggle">
-        <input type="checkbox" :checked="settlementsStore.showOwnOnly" @change="settlementsStore.showOwnOnly = !settlementsStore.showOwnOnly" />
-        <span class="mf-switch"></span>
-        <span>Mine only</span>
-      </label>
-      <label class="mf-own-toggle">
         <input type="checkbox" :checked="settlementsStore.showPublic" @change="settlementsStore.showPublic = !settlementsStore.showPublic" />
         <span class="mf-switch"></span>
         <span>Show public</span>

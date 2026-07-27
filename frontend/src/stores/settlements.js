@@ -11,12 +11,10 @@ export const useSettlementsStore = defineStore('settlements', () => {
   const playerSettlements = ref({})  // id (string) → plain data object
   const hiddenStages   = ref(loadArr('filter-hidden-stages'))
   const hiddenProducts = ref(loadArr('filter-hidden-products'))
-  const showOwnOnly  = ref(localStorage.getItem('filter-own-only')   === 'true')
   const showPublic   = ref(localStorage.getItem('filter-show-public') !== 'false')
 
   watch(hiddenStages,   v => localStorage.setItem('filter-hidden-stages',   JSON.stringify(v)), { deep: true })
   watch(hiddenProducts, v => localStorage.setItem('filter-hidden-products', JSON.stringify(v)), { deep: true })
-  watch(showOwnOnly,    v => localStorage.setItem('filter-own-only',        String(v)))
   watch(showPublic,     v => localStorage.setItem('filter-show-public',     String(v)))
 
   // Placement state
@@ -32,7 +30,6 @@ export const useSettlementsStore = defineStore('settlements', () => {
   function isHidden(s) {
     if (hiddenStages.value.includes(s.stage_id)) return true
     if (s.resource_type && hiddenProducts.value.includes(s.resource_type)) return true
-    if (showOwnOnly.value && !s.is_own) return true
     if (!showPublic.value && s.is_public && !s.is_own) return true
     return false
   }
@@ -97,8 +94,7 @@ export const useSettlementsStore = defineStore('settlements', () => {
   function showAllSettlements() {
     hiddenStages.value.splice(0)
     hiddenProducts.value.splice(0)
-    showOwnOnly.value = false
-    showPublic.value  = true
+    showPublic.value = true
   }
 
   // allProductTypes passed from ViewPanel so we can hide all known types, not just placed ones
@@ -112,7 +108,7 @@ export const useSettlementsStore = defineStore('settlements', () => {
   }
 
   return {
-    STAGES, playerSettlements, hiddenStages, hiddenProducts, showOwnOnly, showPublic,
+    STAGES, playerSettlements, hiddenStages, hiddenProducts, showPublic,
     settlePlaceMode, stageId, resourceType, isPublic, editingId, relocatingId,
     visibleSettlements, isHidden,
     fetchStages, fetchSettlements, clearSettlements,
