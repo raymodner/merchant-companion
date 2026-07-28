@@ -31,11 +31,17 @@ export const useResourcesStore = defineStore('resources', () => {
     if (productText) {
       entries = resourceData.value.filter(r => {
         if (r.name.toLowerCase().includes(productText)) return true
+        if (r.type.toLowerCase().includes(productText)) return true
         if (!r.chain) return false
-        const proc = (r.chain.processed || '').toLowerCase()
-        const f1 = (r.chain.final1?.name || '').toLowerCase()
-        const f2 = (r.chain.final2?.name || '').toLowerCase()
-        return proc.includes(productText) || f1.includes(productText) || f2.includes(productText)
+        const proc    = (r.chain.processed || '').toLowerCase()
+        const procCat = (r.chain.processedCategory || '').toLowerCase()
+        const f1      = (r.chain.final1?.name || '').toLowerCase()
+        const f1Cat   = (r.chain.final1?.category || '').toLowerCase()
+        const f2      = (r.chain.final2?.name || '').toLowerCase()
+        const f2Cat   = (r.chain.final2?.category || '').toLowerCase()
+        return proc.includes(productText) || procCat.includes(productText) ||
+               f1.includes(productText)   || f1Cat.includes(productText)   ||
+               f2.includes(productText)   || f2Cat.includes(productText)
       })
     } else {
       entries = resourceData.value.filter(r =>

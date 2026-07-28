@@ -1,10 +1,11 @@
 import { Router } from 'express'
+import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import rateLimit from 'express-rate-limit'
 import { prisma } from '../prisma.js'
 import { auth } from '../auth.js'
-import { isEmail } from '../validate.js'
+import { body } from '../lib/validate.js'
 
 const router = Router()
 
@@ -35,29 +36,26 @@ function toPublicUser(u) {
   }
 }
 
-router.post('/register', authLimiter, async (req, res) => {
+const registerSchema = z.object({
+  username: z.string({ required_error: 'All fields required' })
+    .trim()
+    .min(3, { message: 'Username must be 3–50 characters' })
+    .max(50, { message: 'Username must be 3–50 characters' })
+    .regex(/^[\w\-]+$/, { message: 'Username may only contain letters, numbers, _ and -' }),
+  email: z.string({ required_error: 'All fields required' })
+    .trim()
+    .email({ message: 'Invalid email address' })
+    .max(254, { message: 'Email must be 254 characters or fewer' }),
+  password: z.string({ required_error: 'All fields required' })
+    .min(8, { message: 'Password must be at least 8 characters' })
+    .max(72, { message: 'Password must be 72 characters or fewer' }),
+})
+
+router.post('/register', authLimiter, body(registerSchema), async (req, res) => {
   const { username, email, password } = req.body
-  if (!username || !email || !password)
-    return res.status(400).json({ error: 'All fields required' })
-  const u = username.trim()
-  const e = email.trim()
-  if (u.length < 3 || u.length > 50)
-    return res.status(400).json({ error: 'Username must be 3–50 characters' })
-  if (!/^[\w\-]+$/.test(u))
-    return res.status(400).json({ error: 'Username may only contain letters, numbers, _ and -' })
-  if (!isEmail(e))
-    return res.status(400).json({ error: 'Invalid email address' })
-  if (e.length > 254)
-    return res.status(400).json({ error: 'Email must be 254 characters or fewer' })
-  if (password.length < 8)
-    return res.status(400).json({ error: 'Password must be at least 8 characters' })
-  if (password.length > 72)
-    return res.status(400).json({ error: 'Password must be 72 characters or fewer' })
   try {
     const hash = await bcrypt.hash(password, 10)
-    const user = await prisma.user.create({
-      data: { username: u, email: e, password: hash },
-    })
+    const user = await prisma.user.create({ data: { username, email, password: hash } })
     const token = jwt.sign({ id: user.id, username: user.username }, secret(), { expiresIn: '24h' })
     res.cookie('token', token, COOKIE_OPTS).json({ user: toPublicUser(user) })
   } catch (err) {
@@ -67,13 +65,17 @@ router.post('/register', authLimiter, async (req, res) => {
   }
 })
 
-router.post('/login', authLimiter, async (req, res) => {
+const loginSchema = z.object({
+  email: z.string({ required_error: 'Email and password required' })
+    .trim()
+    .email({ message: 'Invalid email address' }),
+  password: z.string({ required_error: 'Email and password required' }),
+})
+
+router.post('/login', authLimiter, body(loginSchema), async (req, res) => {
   const { email, password } = req.body
-  if (!email || !password) return res.status(400).json({ error: 'Email and password required' })
-  const e = email.trim()
-  if (!isEmail(e)) return res.status(400).json({ error: 'Invalid email address' })
   try {
-    const user = await prisma.user.findUnique({ where: { email: e } })
+    const user = await prisma.user.findUnique({ where: { email } })
     const valid = await bcrypt.compare(password, user?.password ?? DUMMY_HASH)
     if (!user || !valid) return res.status(401).json({ error: 'Invalid credentials' })
     const token = jwt.sign({ id: user.id, username: user.username }, secret(), { expiresIn: '24h' })
@@ -95,18 +97,19 @@ router.get('/me', auth, async (req, res) => {
   }
 })
 
-router.patch('/preferences', auth, async (req, res) => {
+const preferencesSchema = z.object({
+  country: z.string().max(100, { message: 'Invalid country' }).nullish(),
+  state:   z.string().max(100, { message: 'Invalid state' }).nullish(),
+})
+
+router.patch('/preferences', auth, body(preferencesSchema), async (req, res) => {
   const { country, state } = req.body
-  if (country != null && (typeof country !== 'string' || country.length > 100))
-    return res.status(400).json({ error: 'Invalid country' })
-  if (state != null && (typeof state !== 'string' || state.length > 100))
-    return res.status(400).json({ error: 'Invalid state' })
   try {
     await prisma.user.update({
       where: { id: req.user.id },
       data: {
         ...(country !== undefined && { preferredCountry: country || null }),
-        ...(state !== undefined && { preferredState: state || null }),
+        ...(state   !== undefined && { preferredState:   state   || null }),
       },
     })
     res.json({ ok: true })
@@ -116,16 +119,15 @@ router.patch('/preferences', auth, async (req, res) => {
   }
 })
 
-router.patch('/password', auth, async (req, res) => {
+const changePasswordSchema = z.object({
+  currentPassword: z.string({ required_error: 'currentPassword and newPassword required' }),
+  newPassword: z.string({ required_error: 'currentPassword and newPassword required' })
+    .min(8, { message: 'New password must be at least 8 characters' })
+    .max(72, { message: 'New password must be 72 characters or fewer' }),
+})
+
+router.patch('/password', auth, body(changePasswordSchema), async (req, res) => {
   const { currentPassword, newPassword } = req.body
-  if (!currentPassword || !newPassword)
-    return res.status(400).json({ error: 'currentPassword and newPassword required' })
-  if (typeof currentPassword !== 'string' || typeof newPassword !== 'string')
-    return res.status(400).json({ error: 'Invalid input' })
-  if (newPassword.length < 8)
-    return res.status(400).json({ error: 'New password must be at least 8 characters' })
-  if (newPassword.length > 72)
-    return res.status(400).json({ error: 'New password must be 72 characters or fewer' })
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } })
     if (!user) return res.status(404).json({ error: 'User not found' })

@@ -75,7 +75,7 @@ function close() { rs.closeModal() }
 
         <!-- Filters -->
         <div class="res-filters-wrap">
-          <button class="filters-toggle" @click="rs.filtersOpen = !rs.filtersOpen">
+          <button class="res-filter-toggle" @click="rs.filtersOpen = !rs.filtersOpen">
             {{ rs.filtersOpen ? '▴' : '▾' }} Filters
           </button>
 
@@ -85,7 +85,7 @@ function close() { rs.closeModal() }
               <AppDropdown
                 :options="typeOptions"
                 :model-value="rs.resType"
-                @update:model-value="v => { rs.resType = v; rs.resName = '' }"
+                @update:model-value="v => { rs.resType = v; rs.resName = ''; rs.product = '' }"
               />
             </div>
 
