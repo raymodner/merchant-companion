@@ -26,13 +26,13 @@ const COOKIE_OPTS = {
   maxAge: 24 * 60 * 60 * 1000,
 }
 
-function toPublicUser(u) {
+function toPublicUser(userRecord) {
   return {
-    id: u.id,
-    username: u.username,
-    email: u.email,
-    preferred_country: u.preferredCountry ?? null,
-    preferred_state: u.preferredState ?? null,
+    id: userRecord.id,
+    username: userRecord.username,
+    email: userRecord.email,
+    preferred_country: userRecord.preferredCountry ?? null,
+    preferred_state: userRecord.preferredState ?? null,
   }
 }
 

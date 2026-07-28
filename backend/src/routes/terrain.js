@@ -82,7 +82,7 @@ router.post('/:regionId/import',
     const { data } = req.body
     try {
       const terrains = await prisma.terrain.findMany({ select: { id: true, name: true } })
-      const terrainMap = Object.fromEntries(terrains.map(t => [t.name, t.id]))
+      const terrainMap = Object.fromEntries(terrains.map(terrain => [terrain.name, terrain.id]))
       const records = []
       for (const [cellKey, terrainKey] of Object.entries(data)) {
         if (!terrainKey || !CELL_KEY_RE.test(cellKey)) continue

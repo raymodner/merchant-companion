@@ -22,27 +22,27 @@ router.get('/resources', async (_req, res) => {
       },
       orderBy: [{ resourceType: { name: 'asc' } }, { name: 'asc' }],
     })
-    const formatted = resources.map(r => ({
-      id: r.id,
-      name: r.name,
-      type: r.resourceType.name,
-      icon: r.icon,
-      info: r.info,
-      available: r.available,
-      locations: r.locations.map(l => ({
-        id: l.id,
-        terrain: l.locationRef.terrain.name,
-        location: l.locationRef.name,
-        stars: l.stars,
+    const formatted = resources.map(resource => ({
+      id: resource.id,
+      name: resource.name,
+      type: resource.resourceType.name,
+      icon: resource.icon,
+      info: resource.info,
+      available: resource.available,
+      locations: resource.locations.map(location => ({
+        id: location.id,
+        terrain: location.locationRef.terrain.name,
+        location: location.locationRef.name,
+        stars: location.stars,
       })),
-      chain: r.chain ? {
-        processed: r.chain.processedName,
-        processedCategory: r.chain.processedCategoryRef.name,
-        final1: r.chain.final1Name
-          ? { name: r.chain.final1Name, category: r.chain.final1CategoryRef?.name ?? null }
+      chain: resource.chain ? {
+        processed: resource.chain.processedName,
+        processedCategory: resource.chain.processedCategoryRef.name,
+        final1: resource.chain.final1Name
+          ? { name: resource.chain.final1Name, category: resource.chain.final1CategoryRef?.name ?? null }
           : null,
-        final2: r.chain.final2Name
-          ? { name: r.chain.final2Name, category: r.chain.final2CategoryRef?.name ?? null }
+        final2: resource.chain.final2Name
+          ? { name: resource.chain.final2Name, category: resource.chain.final2CategoryRef?.name ?? null }
           : null,
       } : null,
     }))

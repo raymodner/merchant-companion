@@ -30,14 +30,14 @@ router.get('/settlement-stages', async (_req, res) => {
   try {
     const stages = await prisma.settlementStage.findMany({ orderBy: { sortOrder: 'asc' } })
     res.json({
-      stages: stages.map(s => ({
-        id: s.id,
-        name: s.name,
-        sort_order: s.sortOrder,
-        tier: s.tier,
-        icon: s.icon,
-        population: s.population,
-        days_building: s.daysBuilding,
+      stages: stages.map(stage => ({
+        id: stage.id,
+        name: stage.name,
+        sort_order: stage.sortOrder,
+        tier: stage.tier,
+        icon: stage.icon,
+        population: stage.population,
+        days_building: stage.daysBuilding,
       })),
     })
   } catch (err) {

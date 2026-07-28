@@ -5,26 +5,26 @@ const router = Router()
 
 router.get('/regions', async (_req, res) => {
   try {
-    const rows = await prisma.mapRegion.findMany({ orderBy: { name: 'asc' } })
+    const regions = await prisma.mapRegion.findMany({ orderBy: { name: 'asc' } })
     const idToName = {}
-    for (const r of rows) if (r.parentId === null) idToName[r.id] = r.name
+    for (const region of regions) if (region.parentId === null) idToName[region.id] = region.name
     const countries = {}, subregions = {}
-    for (const r of rows) {
+    for (const region of regions) {
       const obj = {
-        id: r.id,
-        latMin: parseFloat(r.latMin),
-        latMax: parseFloat(r.latMax),
-        lngMin: parseFloat(r.lngMin),
-        lngMax: parseFloat(r.lngMax),
-        center: r.centerLat ? [parseFloat(r.centerLat), parseFloat(r.centerLng)] : null,
-        zoom: r.zoom,
+        id: region.id,
+        latMin: parseFloat(region.latMin),
+        latMax: parseFloat(region.latMax),
+        lngMin: parseFloat(region.lngMin),
+        lngMax: parseFloat(region.lngMax),
+        center: region.centerLat ? [parseFloat(region.centerLat), parseFloat(region.centerLng)] : null,
+        zoom: region.zoom,
       }
-      if (r.parentId === null) {
-        countries[r.name] = obj
+      if (region.parentId === null) {
+        countries[region.name] = obj
       } else {
-        const parent = idToName[r.parentId]
+        const parent = idToName[region.parentId]
         if (!subregions[parent]) subregions[parent] = {}
-        subregions[parent][r.name] = obj
+        subregions[parent][region.name] = obj
       }
     }
     res.json({ countries, subregions })

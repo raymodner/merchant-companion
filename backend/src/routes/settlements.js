@@ -20,20 +20,20 @@ router.get('/player-settlements/:regionId', optionalAuth, uuidParam('regionId'),
       orderBy: { createdAt: 'asc' },
     })
     res.json({
-      settlements: rows.map(s => ({
-        id: s.id,
-        lat: s.lat,
-        lng: s.lng,
-        name: s.name,
-        resource_type: s.resourceTypeRef?.name ?? null,
+      settlements: rows.map(settlement => ({
+        id: settlement.id,
+        lat: settlement.lat,
+        lng: settlement.lng,
+        name: settlement.name,
+        resource_type: settlement.resourceTypeRef?.name ?? null,
         region_id: regionId,
-        is_own: userId != null && s.userId === userId,
-        is_public: s.isPublic,
-        username: s.user.username,
-        stage_id: s.stageId,
-        stage_name: s.stage.name,
-        tier: s.stage.tier,
-        stage_icon: s.stage.icon,
+        is_own: userId != null && settlement.userId === userId,
+        is_public: settlement.isPublic,
+        username: settlement.user.username,
+        stage_id: settlement.stageId,
+        stage_name: settlement.stage.name,
+        tier: settlement.stage.tier,
+        stage_icon: settlement.stage.icon,
       })),
     })
   } catch (err) {
@@ -55,22 +55,30 @@ const postSettlementSchema = z.object({
 router.post('/player-settlements', auth, body(postSettlementSchema), async (req, res) => {
   const { stage_id, region_id, lat: latVal, lng: lngVal, name, resource_type, is_public } = req.body
   try {
-    // 1. Enforce per-user settlement limit
-    const settleCount = await prisma.playerSettlement.count({ where: { userId: req.user.id } })
-    if (settleCount >= 50) return res.status(400).json({ error: 'Settlement limit reached (50 max)' })
+    // 1. Enforce per-user total settlement limit
+    const totalCount = await prisma.playerSettlement.count({ where: { userId: req.user.id } })
+    if (totalCount >= 50) return res.status(400).json({ error: 'Settlement limit reached (50 max)' })
 
-    // 2. Verify region exists
+    // 2. Enforce per-user public settlement limit
+    if (is_public === true) {
+      const publicCount = await prisma.playerSettlement.count({
+        where: { userId: req.user.id, isPublic: true },
+      })
+      if (publicCount >= 10) return res.status(400).json({ error: 'Public settlement limit reached (10 max)' })
+    }
+
+    // 3. Verify region exists
     const region = await prisma.mapRegion.findUnique({ where: { id: region_id }, select: { id: true } })
     if (!region) return res.status(400).json({ error: 'Invalid region_id' })
 
-    // 3. Verify stage exists
+    // 4. Verify stage exists
     const stage = await prisma.settlementStage.findUnique({ where: { id: stage_id }, select: { id: true } })
     if (!stage) return res.status(400).json({ error: 'Invalid stage_id' })
 
-    // 4. Verify resource_type exists if provided
+    // 5. Verify resource_type exists if provided
     if (resource_type != null) {
-      const rt = await prisma.resourceType.findUnique({ where: { name: resource_type }, select: { id: true } })
-      if (!rt) return res.status(400).json({ error: 'Invalid resource_type' })
+      const resourceType = await prisma.resourceType.findUnique({ where: { name: resource_type }, select: { id: true } })
+      if (!resourceType) return res.status(400).json({ error: 'Invalid resource_type' })
     }
 
     const resourceTypeId = await resolveResourceType(resource_type)
@@ -120,6 +128,14 @@ const patchSettlementSchema = z.object({
 router.patch('/player-settlements/:id', auth, uuidParam('id'), body(patchSettlementSchema), async (req, res) => {
   const { stage_id, resource_type, name, is_public, lat: latVal, lng: lngVal } = req.body
   try {
+    // Enforce public settlement limit when making a settlement public
+    if (is_public === true) {
+      const publicCount = await prisma.playerSettlement.count({
+        where: { userId: req.user.id, isPublic: true, NOT: { id: req.params.id } },
+      })
+      if (publicCount >= 10) return res.status(400).json({ error: 'Public settlement limit reached (10 max)' })
+    }
+
     // Verify stage exists if provided
     if (stage_id !== undefined) {
       const stage = await prisma.settlementStage.findUnique({ where: { id: stage_id }, select: { id: true } })
