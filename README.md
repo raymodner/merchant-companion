@@ -1,88 +1,124 @@
-# Merchant Companion
+# Merchant Community Map
 
-A collaborative fantasy/medieval terrain map editor. Users can paint terrain types onto a geographic grid, place tribe markers and player settlements, and look up resource locations with production chains — all shared across accounts.
+A collaborative map tool for tracking terrain, tribes, settlements, and resources. Built with Vue 3, Express 5, and PostgreSQL, running fully in Docker.
 
-## Stack
+## Getting started
 
-| Layer | Technology |
-|---|---|
-| Frontend | Vue 3 + Pinia + Vite |
-| Map | Leaflet.js |
-| Backend | Express 5 + Prisma |
-| Database | PostgreSQL 15 |
-| Auth | JWT via HttpOnly cookie |
-| Package manager | pnpm (monorepo) |
-| Container | Docker Compose |
+### Prerequisites
 
-## Quick start
+- Docker + Docker Compose
+
+### Local development
 
 ```bash
 cp .env.dist .env
-# Edit .env — set DB_PASSWORD and JWT_SECRET
+cp backend/.env.dist backend/.env
+# Edit .env and backend/.env with your values
+
 docker compose up --build -d
 ```
 
-- **Frontend** → http://localhost:5174
-- **API** → http://localhost:3001
+- **Frontend**: http://localhost:5174
+- **API**: http://localhost:3001
 
-Apply schema and seed game data on first boot:
-
+Frontend changes reload automatically via Vite HMR. After changing backend files:
 ```bash
-docker exec -i terrain_db psql -U terrain -d terrain_map < setup.sql
-docker exec -i terrain_db psql -U terrain -d terrain_map < seed.sql
-```
-
-## Environment variables
-
-Copy `.env.dist` → `.env` at the repo root.
-
-| Variable | Description |
-|---|---|
-| `DB_NAME` | PostgreSQL database name |
-| `DB_USER` | PostgreSQL user |
-| `DB_PASSWORD` | PostgreSQL password |
-| `JWT_SECRET` | Signs JWTs — generate with `openssl rand -hex 64` |
-| `ALLOWED_ORIGINS` | Comma-separated allowed CORS origins |
-
-## Common operations
-
-```bash
-# Restart API after backend code changes
 docker compose restart api
-
-# Full rebuild after adding npm packages
-docker compose down && docker compose up --build -d
-
-# Apply schema migrations
-docker exec -i terrain_db psql -U terrain -d terrain_map < setup.sql
-
-# Re-seed game data (preserves users, cell_paints, markers, settlements)
-docker exec -i terrain_db psql -U terrain -d terrain_map < seed.sql
 ```
 
-## Production deployment
+After adding npm packages to either workspace:
+```bash
+docker compose down && docker compose up --build -d
+```
 
-Use `docker-compose.prod.yml` with a host-level Caddy reverse proxy.
+### Environment variables
+
+| Variable | Where | Required | Notes |
+|---|---|---|---|
+| `DB_NAME` | root `.env` | yes | Postgres database name |
+| `DB_USER` | root `.env` | yes | Postgres user |
+| `DB_PASSWORD` | root `.env` | yes | Postgres password |
+| `JWT_SECRET` | `backend/.env` | yes | Generate: `openssl rand -hex 64` |
+| `ALLOWED_ORIGINS` | `backend/.env` / root `.env` | yes | Comma-separated allowed origins, e.g. `http://localhost:5174` |
+| `APP_URL` | root `.env` | prod only | Public URL, used by prod compose |
+
+## Deploying to production
 
 ```bash
-cp .env.dist .env  # fill in production values
-docker compose -f docker-compose.prod.yml up -d --build
+cp .env.dist .env
+# Fill in all values including ALLOWED_ORIGINS=https://yourdomain.com and APP_URL
 
+git pull
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+The production compose builds the Vue app and serves it through nginx on port 8080. The API is not exposed directly; nginx reverse-proxies it.
+
+### Database migrations
+
+Schema changes are in `setup.sql` (idempotent — safe to re-run):
+```bash
 docker exec -i terrain_db psql -U terrain -d terrain_map < setup.sql
+```
+
+Game data is in `seed.sql` (pure upserts — safe to re-run):
+```bash
 docker exec -i terrain_db psql -U terrain -d terrain_map < seed.sql
 ```
 
-The prod compose binds the frontend to `127.0.0.1:8080`. Caddy handles TLS termination and proxies public traffic.
+## Architecture
+
+```
+frontend/    Vue 3 + Pinia + Vite SPA
+backend/     Express 5 + Prisma + PostgreSQL
+```
+
+### Backend structure
+
+```
+backend/src/
+  index.js            Middleware (helmet, cors, rate limiting) + route mounts
+  auth.js             JWT cookie middleware
+  prisma.js           PrismaClient singleton
+  lib/
+    validate.js       Zod middleware helpers: body(), uuidParam()
+    resolvers.js      Cached DB lookups for terrain/tribe/resource types
+    cleanup.js        Monthly job: removes superseded cell_paint rows
+  routes/
+    auth.js           register, login, /me, preferences, password, logout
+    lookup.js         GET /terrains, /tribes, /settlement-stages
+    regions.js        GET /regions
+    resources.js      GET /resources, PATCH /resource-locations/:id
+    terrain.js        Cell paint history (read/write/delete)
+    tribes.js         Tribe marker CRUD
+    settlements.js    Settlement CRUD
+```
+
+### Key design decisions
+
+- **Terrain painting is append-only** — new rows are inserted per paint action; the latest paint per cell is queried with `DISTINCT ON`. A background job cleans up superseded rows monthly.
+- **User limits** enforced in serializable transactions to prevent race conditions: 50 tribe markers, 50 settlements, 10 public settlements per user.
+- **Auth via HttpOnly cookies** — no tokens in JS; `credentials: 'include'` on every fetch.
+- **All Leaflet objects stay in `TheMap.vue`** — stores hold plain data; TheMap syncs Leaflet reactively.
 
 ## Features
 
-- **Shared terrain painting** — 0.1° grid shared across all users; latest paint per cell wins, full history preserved
-- **Paint mode** — explicit toggle prevents accidental edits; selecting a terrain auto-enables it
-- **Terrain filters** — show/hide terrain types; hidden cells revert to the empty style
-- **Tribe markers** — place and label tribe locations per region, filterable by tribe and type
-- **Player settlements** — track settlement stage (Camp → Metropolis, Abbey, Castle), resource focus, and visibility
-- **Resource lookup** — search by name, type, terrain, production chain output, and minimum star rating
-- **Star ratings** — 0 = unknown (always shown), 1–5 = rated quality; editable when logged in
-- **Production chains** — trace raw material → processed good → final products
-- **Region selector** — country and US state dropdowns with type-to-filter; preference stored server-side per user
-- **Auth** — register/login with HttpOnly JWT cookie; password change in-app
+- **Terrain painting** — paint grid cells with terrain types; shared across all users per region
+- **Tribe markers** — place and label tribe camp/settlement markers on the map (up to 50)
+- **Player settlements** — track your own settlements with stage and visibility (up to 50 total, 10 public)
+- **Resource lookup** — find resources by name, type, or chain; filter by min-stars rating
+- **Region navigation** — country + state/sub-region dropdown with server-side preference saving
+- **Dark / light theme** — system preference + manual toggle, no flash on load
+- **Account management** — register, login, change password
+
+## Development notes
+
+After changing `backend/prisma/schema.prisma`, regenerate the Prisma client:
+```bash
+docker exec terrain_api pnpm prisma:generate
+```
+
+Run ad-hoc SQL:
+```bash
+docker exec -i terrain_db psql -U terrain -d terrain_map -c "SELECT ..."
+```

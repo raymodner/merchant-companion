@@ -21,17 +21,36 @@ docker compose down && docker compose up --build -d
 
 Frontend changes (JS/CSS/Vue) are picked up live via Vite's HMR — no restart needed.
 
-## Project layout
+## Deploying to production
 
-This is a monorepo with two build contexts:
+```bash
+# On the server:
+git pull
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+The prod compose file builds the frontend for production (nginx serving built dist on port 8080) and sets `NODE_ENV=production`, `COOKIE_SECURE=true`. The API is not exposed directly; nginx proxies it.
+
+## Project layout
 
 ```
 backend/              Express 5 + Prisma API
   src/
-    index.js          All routes except auth
-    routes/auth.js    register, login, /me, PATCH /preferences
+    index.js          Middleware setup + route mounts only
     auth.js           JWT middleware (req.user = { id, username })
     prisma.js         PrismaClient singleton
+    lib/
+      validate.js     Zod primitives (uuid, lat, lng) + body() and uuidParam() middleware
+      resolvers.js    Cached DB lookups: resolveTerrain, resolveTribeType, resolveResourceType
+      cleanup.js      Monthly job: deletes superseded cell_paint rows
+    routes/
+      auth.js         register, login, /me, preferences, password, logout
+      lookup.js       GET /terrains, /tribes, /settlement-stages
+      regions.js      GET /regions
+      resources.js    GET /resources, PATCH /resource-locations/:id
+      terrain.js      GET/POST/DELETE /terrain/:regionId (paint data)
+      tribes.js       GET/POST/PATCH/DELETE /tribe-markers
+      settlements.js  GET/POST/PATCH/DELETE /player-settlements
   prisma/
     schema.prisma     Full DB schema (11 models)
   Dockerfile
@@ -40,7 +59,7 @@ frontend/             Vue 3 + Vite + Pinia SPA
   src/
     App.vue           Root component — startup sequence, provides mapRef
     main.js           createApp, Pinia, mount
-    assets/main.css   All styles
+    assets/main.css   All styles (CSS custom property token system, dark/light themes)
     api/index.js      All API calls (fetch, credentials: 'include')
     utils.js          TRIBE_TYPE_ICONS, typeIcon()
     stores/
@@ -53,16 +72,18 @@ frontend/             Vue 3 + Vite + Pinia SPA
       ui.js           useUiStore — sidebarOpen, mode, markerTab, authModalOpen, placementMode
     components/
       TheMap.vue      All Leaflet logic — cells, tribe/settlement markers, paint, watchers
-      TheSidebar.vue  Sidebar shell — region dropdowns, mode tabs, ViewPanel/EditPanel
+      TheSidebar.vue  Sidebar shell — theme toggle, auth bar, region dropdowns, mode tabs
       AppDropdown.vue Reusable dropdown (Teleport to body to escape overflow clipping)
       panels/
         ViewPanel.vue Terrain filters, tribe/settlement filters + marker lists with flyTo
         EditPanel.vue Tribe/settlement placement, terrain paint swatches
       modals/
-        AuthModal.vue       Login / register tabs
-        ResourceModal.vue   Resource lookup with star ratings
-        TribeEditModal.vue  Edit a placed tribe marker
-        SettleEditModal.vue Edit a placed settlement
+        AuthModal.vue           Login / register tabs
+        ResourceModal.vue       Resource lookup with star ratings
+        TribeEditModal.vue      Edit a placed tribe marker
+        SettleEditModal.vue     Edit a placed settlement
+        ChangePasswordModal.vue Change password form
+  nginx.conf
   Dockerfile
 ```
 
@@ -88,10 +109,10 @@ docker exec -i terrain_db psql -U terrain -d terrain_map -c "SELECT ..."
 
 ### Key tables
 
-- **`cell_paints`** — append-only paint history. Latest paint per cell is retrieved with `DISTINCT ON (cell_key) ORDER BY cell_key, painted_at DESC`. Never update rows, only insert.
+- **`cell_paints`** — append-only paint history. Latest paint per cell is retrieved with `DISTINCT ON (cell_key, region_id) ORDER BY painted_at DESC`. Never update rows, only insert. A monthly background job cleans up superseded rows.
 - **`resource_locations.stars`** — `0` means unknown (always shown in filters regardless of min-stars setting); `1–5` are actual ratings. The DB constraint is `CHECK (stars BETWEEN 0 AND 5)`.
 - **`users.preferred_country / preferred_state`** — stored server-side, applied when the user logs in if different from the current view.
-- **`map_regions`** — countries have `parent_id IS NULL`; US states have `parent_id` pointing to the United States row. Large countries are split into geographic sub-regions rather than using a coarser grid step (e.g. Norway North / Norway South, Alaska Northeast / Alaska Northwest / etc.). When replacing a region in `seed.sql`, explicitly DELETE its dependent `cell_paints`, `tribe_markers`, and `player_settlements` rows first, then DELETE the region, then INSERT the replacements.
+- **`map_regions`** — countries have `parent_id IS NULL`; US states have `parent_id` pointing to the United States row. Large countries are split into geographic sub-regions rather than using a coarser grid step. When replacing a region in `seed.sql`, explicitly DELETE its dependent `cell_paints`, `tribe_markers`, and `player_settlements` rows first, then DELETE the region, then INSERT the replacements.
 
 ### Prisma
 
@@ -104,7 +125,42 @@ docker exec terrain_api pnpm prisma:generate
 
 The `DATABASE_URL` env var is composed from `DB_USER`, `DB_PASSWORD`, and `DB_NAME` in `docker-compose.yml`.
 
-## Key patterns
+## Backend patterns
+
+### Route structure
+All routes are mounted at `/api` in `index.js`. Each route file is self-contained with its own Zod schemas. No logic lives in `index.js` — only middleware setup and `app.use()` mounts.
+
+### Validation
+`lib/validate.js` exports:
+- `body(schema)` — middleware that runs `schema.safeParse(req.body)`, returns 400 on failure, replaces `req.body` with parsed data (strips unknown fields)
+- `uuidParam(key)` — middleware that validates a route param as UUID, returns 400 on failure
+- `uuid`, `lat`, `lng` — reusable Zod primitive schemas
+
+### Resolvers
+`lib/resolvers.js` exports `resolveTerrain`, `resolveTribeType`, `resolveResourceType`. Each caches DB lookups in a `Map` so repeated calls (e.g. painting many cells of the same terrain) don't hit the DB.
+
+### Limits
+- 50 tribe markers per user (enforced in serializable transaction)
+- 50 settlements per user (enforced in serializable transaction)
+- 10 public settlements per user (enforced in serializable transaction + PATCH check)
+
+Limit checks and inserts run inside `prisma.$transaction({ isolationLevel: 'Serializable' })` to prevent TOCTOU races.
+
+### Rate limiting
+Three limiters, all applied in `index.js` before route handlers:
+- `readLimiter` — 120 GET requests/min/IP
+- `writeLimiter` — 60 non-GET requests/min/IP
+- `authLimiter` — 20 requests/15 min/IP, on login, register, and password change
+
+`app.set('trust proxy', 1)` is set so rate limiters use the real client IP behind nginx in production.
+
+### Raw query
+`GET /api/terrain/:regionId` uses `prisma.$queryRaw` with `DISTINCT ON (region_id, cell_key) ORDER BY painted_at DESC`. Prisma ORM cannot express `DISTINCT ON` without loading all rows; keep this as a raw query.
+
+### Error handling
+Always catch errors and return generic `{ error: 'Internal server error' }` for 500s — never expose stack traces or Prisma error details. Specific Prisma codes that are safe to surface: `P2002` (unique conflict → 409), `P2025` (not found → 404).
+
+## Frontend patterns
 
 ### Leaflet isolation
 All Leaflet objects (`L.map`, `L.rectangle`, `L.marker`) live **only** in `TheMap.vue`, never in Pinia stores. Stores hold plain data objects. TheMap watches store state and syncs Leaflet instances reactively.
@@ -119,17 +175,26 @@ It includes a sticky filter input at the top of the list (auto-focused on open) 
 
 For sidebar dropdowns pass `cls="sidebar"` which applies `.sidebar-btn` / `.sidebar-list` CSS.
 
+### Theming
+CSS custom property token system with dark (default) and light themes. `data-theme` attribute on `<html>` is set by an inline `<script>` in `index.html` before render (prevents flash). `TheSidebar.vue` has the toggle button; it writes to `localStorage` and updates the `meta[name="theme-color"]` tag for iOS browser chrome color.
+
 ### Terrain painting
 Grid cells are `L.rectangle` instances stored in `cells[cellKey]` inside TheMap. All painting is gated on `paintStore.paintMode === true`. Selecting a terrain or eraser auto-enables paint mode. Map dragging is disabled only while `paintMode` is true and the mouse button is held. Painted cells use `fillOpacity: 0.40`; the `.swatch` CSS matches with `opacity: 0.4`.
 
 ### TERRAINS object
 `paintStore.TERRAINS` is a `ref({})` populated at startup from `GET /api/terrains`. All terrain-dependent UI (colour swatches, filter rows, resource modal dropdown) is rendered from this reactive object.
 
+### Resource search
+Product text search (`rs.product`) searches resource name, resource type name, and all chain product names and categories. Selecting a type filter clears the product search (and vice versa) — they are mutually exclusive modes.
+
 ### Auth
-Auth uses HttpOnly cookies (set by the server). `credentials: 'include'` is passed on every `fetch` call. On login/register the server sends a `Set-Cookie` header; on `/me` it validates the cookie. The JWT middleware sets `req.user = { id, username }`.
+Auth uses HttpOnly cookies (set by the server). `credentials: 'include'` is passed on every `fetch` call. On login/register the server sends a `Set-Cookie` header; on `/me` it validates the cookie. The JWT middleware sets `req.user = { id, username }`. Password change re-issues a fresh JWT cookie immediately.
 
 ### Star ratings in edit mode
 Star editing in ResourceModal is behind an `editMode` toggle that requires login. Setting stars to `0` via the PATCH endpoint resets a location to "unknown".
+
+### Mobile viewport
+Resource modal uses `100dvh` (dynamic viewport height) instead of `100vh` to correctly fit the visible area on iOS Safari where `100vh` includes the area behind the browser toolbar.
 
 ### Circular dep avoidance
 - `authStore` imports `regionStore` (to apply server-side prefs on login)
@@ -149,5 +214,6 @@ Copy `backend/.env.dist` → `backend/.env`. Required variables:
 - `DATABASE_URL` — full Postgres connection string
 - `JWT_SECRET` — generate with `openssl rand -hex 64`
 - `NODE_ENV`, `PORT` (default `3001`)
+- `ALLOWED_ORIGINS` — comma-separated list of allowed frontend origins (e.g. `https://merchant.poolchamp.nl`)
 
-The `docker-compose.yml` composes `DATABASE_URL` from the root `.env` vars (`DB_NAME`, `DB_USER`, `DB_PASSWORD`). Copy `.env.dist` → `.env` at the repo root for Docker usage.
+Copy `.env.dist` → `.env` at the repo root for Docker usage (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `ALLOWED_ORIGINS`, `APP_URL`).

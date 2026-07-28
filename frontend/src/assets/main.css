@@ -599,7 +599,7 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; backgrou
   padding: 28px 24px 20px;
   width: 100%;
   max-width: 540px;
-  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   margin: auto;
   display: flex;
   flex-direction: column;
@@ -1519,10 +1519,14 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; backgrou
     max-height: 88vh;
     overflow-y: auto;
   }
+  #resource-overlay {
+    padding: 8px 12px;
+  }
   #resource-modal {
     width: calc(100vw - 24px);
-    max-height: 88vh;
+    max-height: calc(100dvh - 16px);
     border-radius: 6px;
+    padding: 20px 16px 12px;
   }
 
   /* Bigger touch targets */
