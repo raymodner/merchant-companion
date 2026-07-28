@@ -126,7 +126,7 @@ const changePasswordSchema = z.object({
     .max(72, { message: 'New password must be 72 characters or fewer' }),
 })
 
-router.patch('/password', auth, body(changePasswordSchema), async (req, res) => {
+router.patch('/password', authLimiter, auth, body(changePasswordSchema), async (req, res) => {
   const { currentPassword, newPassword } = req.body
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } })
@@ -135,7 +135,8 @@ router.patch('/password', auth, body(changePasswordSchema), async (req, res) => 
     if (!valid) return res.status(401).json({ error: 'Current password is incorrect' })
     const hash = await bcrypt.hash(newPassword, 10)
     await prisma.user.update({ where: { id: req.user.id }, data: { password: hash } })
-    res.json({ ok: true })
+    const token = jwt.sign({ id: user.id, username: user.username }, secret(), { expiresIn: '24h' })
+    res.cookie('token', token, COOKIE_OPTS).json({ ok: true })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })

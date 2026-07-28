@@ -55,46 +55,45 @@ const postSettlementSchema = z.object({
 router.post('/player-settlements', auth, body(postSettlementSchema), async (req, res) => {
   const { stage_id, region_id, lat: latVal, lng: lngVal, name, resource_type, is_public } = req.body
   try {
-    // 1. Enforce per-user total settlement limit
-    const totalCount = await prisma.playerSettlement.count({ where: { userId: req.user.id } })
-    if (totalCount >= 50) return res.status(400).json({ error: 'Settlement limit reached (50 max)' })
-
-    // 2. Enforce per-user public settlement limit
-    if (is_public === true) {
-      const publicCount = await prisma.playerSettlement.count({
-        where: { userId: req.user.id, isPublic: true },
-      })
-      if (publicCount >= 10) return res.status(400).json({ error: 'Public settlement limit reached (10 max)' })
-    }
-
-    // 3. Verify region exists
+    // Verify region and stage exist before opening the transaction
     const region = await prisma.mapRegion.findUnique({ where: { id: region_id }, select: { id: true } })
     if (!region) return res.status(400).json({ error: 'Invalid region_id' })
 
-    // 4. Verify stage exists
     const stage = await prisma.settlementStage.findUnique({ where: { id: stage_id }, select: { id: true } })
     if (!stage) return res.status(400).json({ error: 'Invalid stage_id' })
 
-    // 5. Verify resource_type exists if provided
     if (resource_type != null) {
       const resourceType = await prisma.resourceType.findUnique({ where: { name: resource_type }, select: { id: true } })
       if (!resourceType) return res.status(400).json({ error: 'Invalid resource_type' })
     }
 
     const resourceTypeId = await resolveResourceType(resource_type)
-    const settlement = await prisma.playerSettlement.create({
-      data: {
-        userId: req.user.id,
-        stageId: stage_id,
-        resourceTypeId,
-        regionId: region_id,
-        lat: latVal,
-        lng: lngVal,
-        name: name || null,
-        isPublic: is_public === true,
-      },
-      include: { user: true, stage: true, resourceTypeRef: true },
-    })
+
+    // Count checks and insert in a serializable transaction to prevent races
+    const settlement = await prisma.$transaction(async (tx) => {
+      const totalCount = await tx.playerSettlement.count({ where: { userId: req.user.id } })
+      if (totalCount >= 50) throw Object.assign(new Error('Settlement limit reached (50 max)'), { code: 'LIMIT' })
+
+      if (is_public === true) {
+        const publicCount = await tx.playerSettlement.count({ where: { userId: req.user.id, isPublic: true } })
+        if (publicCount >= 10) throw Object.assign(new Error('Public settlement limit reached (10 max)'), { code: 'LIMIT' })
+      }
+
+      return tx.playerSettlement.create({
+        data: {
+          userId: req.user.id,
+          stageId: stage_id,
+          resourceTypeId,
+          regionId: region_id,
+          lat: latVal,
+          lng: lngVal,
+          name: name || null,
+          isPublic: is_public === true,
+        },
+        include: { user: true, stage: true, resourceTypeRef: true },
+      })
+    }, { isolationLevel: 'Serializable' })
+
     res.json({
       id: settlement.id,
       lat: settlement.lat,
@@ -111,6 +110,7 @@ router.post('/player-settlements', auth, body(postSettlementSchema), async (req,
       stage_icon: settlement.stage.icon,
     })
   } catch (err) {
+    if (err.code === 'LIMIT') return res.status(400).json({ error: err.message })
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })
   }

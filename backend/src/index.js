@@ -3,7 +3,9 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
+import rateLimit from 'express-rate-limit'
 
+import { startCleanup } from './lib/cleanup.js'
 import authRoutes        from './routes/auth.js'
 import lookupRoutes      from './routes/lookup.js'
 import regionsRoutes     from './routes/regions.js'
@@ -18,6 +20,7 @@ const ALLOWED_ORIGINS = new Set(
 
 const app = express()
 
+app.set('trust proxy', 1)
 app.use(helmet())
 app.use(cors({
   origin: (origin, cb) =>
@@ -27,8 +30,28 @@ app.use(cors({
 app.use(express.json({ limit: '100kb' }))
 app.use(cookieParser())
 
+const readLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: { error: 'Too many requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method !== 'GET' && req.method !== 'HEAD',
+})
+
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: 'Too many requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'GET' || req.method === 'HEAD',
+})
+
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
+app.use('/api', readLimiter)
+app.use('/api', writeLimiter)
 app.use('/api/auth',         authRoutes)
 app.use('/api',              lookupRoutes)
 app.use('/api',              regionsRoutes)
@@ -50,4 +73,7 @@ app.use((err, _req, res, _next) => {
 })
 
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => console.log(`API server → http://localhost:${PORT}`))
+app.listen(PORT, () => {
+  console.log(`API server → http://localhost:${PORT}`)
+  startCleanup()
+})

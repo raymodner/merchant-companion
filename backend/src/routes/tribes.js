@@ -16,18 +16,18 @@ router.get('/tribe-markers/:regionId', auth, uuidParam('regionId'), async (req, 
       orderBy: { createdAt: 'asc' },
     })
     res.json({
-      markers: rows.map(m => ({
-        id: m.id,
-        lat: m.lat,
-        lng: m.lng,
-        type: m.tribeType.name,
+      markers: rows.map(marker => ({
+        id: marker.id,
+        lat: marker.lat,
+        lng: marker.lng,
+        type: marker.tribeType.name,
         region_id: regionId,
         is_own: true,
-        username: m.user.username,
-        tribe_id: m.tribeId,
-        tribe_name: m.tribe.name,
-        tribe_color: m.tribe.color,
-        tribe_icon: m.tribe.icon,
+        username: marker.user.username,
+        tribe_id: marker.tribeId,
+        tribe_name: marker.tribe.name,
+        tribe_color: marker.tribe.color,
+        tribe_icon: marker.tribe.icon,
       })),
     })
   } catch (err) {
@@ -47,23 +47,26 @@ const postTribeMarkerSchema = z.object({
 router.post('/tribe-markers', auth, body(postTribeMarkerSchema), async (req, res) => {
   const { tribe_id, type, region_id, lat: latVal, lng: lngVal } = req.body
   try {
-    // 1. Enforce per-user tribe marker limit
-    const tribeCount = await prisma.tribeMarker.count({ where: { placedBy: req.user.id } })
-    if (tribeCount >= 50) return res.status(400).json({ error: 'Tribe marker limit reached (50 max)' })
-
-    // 2. Verify region exists
+    // Verify region and tribe exist before opening the transaction
     const region = await prisma.mapRegion.findUnique({ where: { id: region_id }, select: { id: true } })
     if (!region) return res.status(400).json({ error: 'Invalid region_id' })
 
-    // 3. Verify tribe exists
     const tribe = await prisma.tribe.findUnique({ where: { id: tribe_id }, select: { id: true } })
     if (!tribe) return res.status(400).json({ error: 'Invalid tribe_id' })
 
     const tribeTypeId = await resolveTribeType(type)
-    const marker = await prisma.tribeMarker.create({
-      data: { placedBy: req.user.id, tribeId: tribe_id, tribeTypeId, regionId: region_id, lat: latVal, lng: lngVal },
-      include: { user: true, tribe: true, tribeType: true },
-    })
+
+    // Count check and insert in a serializable transaction to prevent races
+    const marker = await prisma.$transaction(async (tx) => {
+      const tribeCount = await tx.tribeMarker.count({ where: { placedBy: req.user.id } })
+      if (tribeCount >= 50) throw Object.assign(new Error('Tribe marker limit reached (50 max)'), { code: 'LIMIT' })
+
+      return tx.tribeMarker.create({
+        data: { placedBy: req.user.id, tribeId: tribe_id, tribeTypeId, regionId: region_id, lat: latVal, lng: lngVal },
+        include: { user: true, tribe: true, tribeType: true },
+      })
+    }, { isolationLevel: 'Serializable' })
+
     res.json({
       id: marker.id,
       lat: marker.lat,
@@ -78,6 +81,7 @@ router.post('/tribe-markers', auth, body(postTribeMarkerSchema), async (req, res
       tribe_icon: marker.tribe.icon,
     })
   } catch (err) {
+    if (err.code === 'LIMIT') return res.status(400).json({ error: err.message })
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })
   }
