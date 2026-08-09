@@ -33,18 +33,18 @@ app.use(cookieParser())
 
 const readLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 120,
+  limit: 120,
   message: { error: 'Too many requests, please slow down' },
-  standardHeaders: true,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
   skip: (req) => req.method !== 'GET' && req.method !== 'HEAD',
 })
 
 const writeLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 60,
+  limit: 60,
   message: { error: 'Too many requests, please slow down' },
-  standardHeaders: true,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
   skip: (req) => req.method === 'GET' || req.method === 'HEAD',
 })

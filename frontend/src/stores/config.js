@@ -5,7 +5,9 @@ export const useConfigStore = defineStore('config', () => {
   const maxTribeMarkers      = ref(50)
   const maxSettlements       = ref(50)
   const maxPublicSettlements = ref(10)
-  const starEditing          = ref(true)
+  const starEditing                  = ref(true)
+  const registrationEnabled          = ref(true)
+  const publicSettlementsRequireAuth = ref(false)
   const contact              = ref({ name: '', discord: '' })
 
   async function fetchConfig() {
@@ -16,10 +18,12 @@ export const useConfigStore = defineStore('config', () => {
       maxTribeMarkers.value      = data.maxTribeMarkers
       maxSettlements.value       = data.maxSettlements
       maxPublicSettlements.value = data.maxPublicSettlements
-      starEditing.value          = data.starEditing
+      starEditing.value                  = data.starEditing
+      registrationEnabled.value          = data.registrationEnabled
+      publicSettlementsRequireAuth.value = data.publicSettlementsRequireAuth
       contact.value              = data.contact
     } catch { /* keep defaults */ }
   }
 
-  return { maxTribeMarkers, maxSettlements, maxPublicSettlements, starEditing, contact, fetchConfig }
+  return { maxTribeMarkers, maxSettlements, maxPublicSettlements, starEditing, registrationEnabled, publicSettlementsRequireAuth, contact, fetchConfig }
 })

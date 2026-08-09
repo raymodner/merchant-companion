@@ -1,25 +1,31 @@
 <script setup>
 import { ref } from 'vue'
-import { useAuthStore } from '@/stores/auth.js'
-import { useUiStore }   from '@/stores/ui.js'
+import { useAuthStore }   from '@/stores/auth.js'
+import { useUiStore }     from '@/stores/ui.js'
+import { useConfigStore } from '@/stores/config.js'
 
-const authStore = useAuthStore()
-const uiStore   = useUiStore()
+const authStore   = useAuthStore()
+const uiStore     = useUiStore()
+const configStore = useConfigStore()
 
-const tab      = ref('login')
-const username = ref('')
-const email    = ref('')
-const password = ref('')
-const error    = ref('')
-const loading  = ref(false)
+const tab        = ref('login')
+const username   = ref('')
+const email      = ref('')
+const password   = ref('')
+const error      = ref('')
+const loading    = ref(false)
+const acceptedTerms   = ref(false)
+const acceptedPrivacy = ref(false)
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function reset() {
-  username.value = ''
-  email.value    = ''
-  password.value = ''
-  error.value    = ''
+  username.value      = ''
+  email.value         = ''
+  password.value      = ''
+  error.value         = ''
+  acceptedTerms.value   = false
+  acceptedPrivacy.value = false
 }
 
 function close() {
@@ -44,6 +50,8 @@ function validate() {
     if (!EMAIL_RE.test(e))         return 'Invalid email address'
     if (!p)                        return 'Password is required'
     if (p.length < 8)              return 'Password must be at least 8 characters'
+    if (!acceptedTerms.value)      return 'You must accept the Terms of Service'
+    if (!acceptedPrivacy.value)    return 'You must accept the Privacy Policy'
   }
   return null
 }
@@ -81,12 +89,14 @@ async function submit() {
             :class="{ active: tab === 'login' }"
             @click="tab = 'login'; error = ''"
           >Log In</button>
-          <span class="auth-tab-sep">|</span>
-          <button
-            class="auth-tab"
-            :class="{ active: tab === 'register' }"
-            @click="tab = 'register'; error = ''"
-          >Register</button>
+          <template v-if="configStore.registrationEnabled">
+            <span class="auth-tab-sep">|</span>
+            <button
+              class="auth-tab"
+              :class="{ active: tab === 'register' }"
+              @click="tab = 'register'; error = ''"
+            >Register</button>
+          </template>
         </div>
 
         <form class="auth-form" @submit.prevent="submit">
@@ -115,6 +125,17 @@ async function submit() {
             autocomplete="current-password"
             placeholder="Password"
           />
+
+          <template v-if="tab === 'register'">
+            <label class="auth-checkbox">
+              <input type="checkbox" v-model="acceptedTerms" />
+              I agree to the <a href="/terms.html" target="_blank">Terms of Service</a>
+            </label>
+            <label class="auth-checkbox">
+              <input type="checkbox" v-model="acceptedPrivacy" />
+              I have read the <a href="/privacy.html" target="_blank">Privacy Policy</a>
+            </label>
+          </template>
 
           <div id="auth-error">{{ error }}</div>
 

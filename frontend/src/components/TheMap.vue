@@ -449,7 +449,7 @@ watch(() => settlementsStore.playerSettlements, syncSettlements, { deep: true })
 
 // Settlement visibility filters
 watch(
-  [() => settlementsStore.hiddenStages, () => settlementsStore.hiddenProducts, () => settlementsStore.showOwnOnly],
+  [() => settlementsStore.hiddenStages, () => settlementsStore.hiddenProducts, () => settlementsStore.showPublic],
   applySettlementVisibility,
   { deep: true }
 )

@@ -6,14 +6,15 @@ import rateLimit from 'express-rate-limit'
 import { prisma } from '../prisma.js'
 import { auth } from '../auth.js'
 import { body } from '../lib/validate.js'
+import { config } from '../lib/config.js'
 
 const router = Router()
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  limit: 20,
   message: { error: 'Too many attempts, please try again later' },
-  standardHeaders: true,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
 })
 
@@ -53,6 +54,14 @@ const registerSchema = z.object({
 
 router.post('/register', authLimiter, body(registerSchema), async (req, res) => {
   const { username, email, password } = req.body
+
+  if (config.registrationAllowlist) {
+    if (!config.registrationAllowlist.has(email.toLowerCase()))
+      return res.status(403).json({ error: 'Your email address is not on the registration allowlist' })
+  } else if (!config.registrationOpen) {
+    return res.status(403).json({ error: 'Registration is currently closed' })
+  }
+
   try {
     const hash = await bcrypt.hash(password, 10)
     const user = await prisma.user.create({ data: { username, email, password: hash } })

@@ -1,7 +1,9 @@
+name: merchant-companion
+
 services:
   db:
     image: postgres:15-alpine
-    container_name: terrain_db
+    container_name: merchant-companion_db
     restart: always
     environment:
       POSTGRES_DB: ${DB_NAME}
@@ -21,7 +23,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: terrain_api
+    container_name: merchant-companion_api
     restart: always
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
@@ -41,7 +43,7 @@ services:
       target: prod
       args:
         VITE_APP_URL: ${APP_URL}
-    container_name: terrain_frontend
+    container_name: merchant-companion_frontend
     restart: always
     ports:
       - '127.0.0.1:8080:80'

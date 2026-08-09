@@ -1,75 +1,5 @@
--- ── Seed file (re-runnable) ───────────────────────────────────────────────
--- Pure UPSERT — no truncation. Safe to re-run; preserves user data
--- (cell_paints, tribe_markers, player_settlements) and star ratings.
--- map_regions UPSERTs preserve IDs referenced by user-data FK columns.
-
-CREATE TABLE IF NOT EXISTS resource_types (
-  id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(30) NOT NULL UNIQUE
-);
-
-CREATE TABLE IF NOT EXISTS tribe_types (
-  id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(20) NOT NULL UNIQUE
-);
-
-CREATE TABLE IF NOT EXISTS terrains (
-  id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name  VARCHAR(50) NOT NULL UNIQUE,
-  color VARCHAR(20) NOT NULL,
-  icon  VARCHAR(10) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS resources (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name             VARCHAR(100) NOT NULL UNIQUE,
-  resource_type_id UUID NOT NULL REFERENCES resource_types(id),
-  icon             VARCHAR(20),
-  info             TEXT,
-  available        BOOLEAN NOT NULL DEFAULT true
-);
-
-CREATE TABLE IF NOT EXISTS locations (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name       VARCHAR(100) NOT NULL,
-  terrain_id UUID NOT NULL REFERENCES terrains(id),
-  UNIQUE (name, terrain_id)
-);
-
-CREATE TABLE IF NOT EXISTS resource_locations (
-  id          UUID     PRIMARY KEY DEFAULT gen_random_uuid(),
-  resource_id UUID     NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
-  location_id UUID     NOT NULL REFERENCES locations(id),
-  stars       SMALLINT NOT NULL DEFAULT 0 CHECK (stars BETWEEN 0 AND 5),
-  UNIQUE (resource_id, location_id)
-);
-
-CREATE TABLE IF NOT EXISTS production_chain (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  resource_id     UUID NOT NULL UNIQUE REFERENCES resources(id) ON DELETE CASCADE,
-  processed_name  VARCHAR(100) NOT NULL,
-  final1_name     VARCHAR(100),
-  final1_category VARCHAR(30),
-  final2_name     VARCHAR(100),
-  final2_category VARCHAR(30)
-);
-
-CREATE TABLE IF NOT EXISTS map_regions (
-  id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-  name       VARCHAR(100) NOT NULL,
-  parent_id  UUID REFERENCES map_regions(id),
-  lat_min    DECIMAL(7,4) NOT NULL,
-  lat_max    DECIMAL(7,4) NOT NULL,
-  lng_min    DECIMAL(8,4) NOT NULL,
-  lng_max    DECIMAL(8,4) NOT NULL,
-  center_lat DECIMAL(7,4),
-  center_lng DECIMAL(8,4),
-  zoom       SMALLINT
-);
-CREATE UNIQUE INDEX IF NOT EXISTS map_regions_name_parent_id_key
-  ON map_regions (name, COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid));
-
 -- ── Static lookup data ────────────────────────────────────────────────────
+
 INSERT INTO resource_types (name, tier) VALUES
   ('Ore',      1), ('Wood',    1), ('Stone',  1), ('Raw Food', 1),
   ('Lumber',   2), ('Metal',   2), ('Bricks', 2), ('Food',     2),
@@ -79,7 +9,36 @@ ON CONFLICT (name) DO UPDATE SET tier = EXCLUDED.tier;
 INSERT INTO tribe_types (name) VALUES ('Camp'), ('Selo'), ('Burgh')
 ON CONFLICT (name) DO NOTHING;
 
+INSERT INTO tribes (name, color, icon) VALUES
+  ('Stonewalkers',    '#8B7355', '🪨'),
+  ('Ashbinders',      '#5C5C5C', '🌋'),
+  ('Bloodherds',      '#8B1A1A', '🐂'),
+  ('Threadkeepers',   '#7B3F8B', '🧵'),
+  ('Wayfarers',       '#1E5B8A', '🧭'),
+  ('Golden Clan',     '#B8860B', '💰'),
+  ('Ironbound',       '#2F4F4F', '⚙'),
+  ('The Great Accord','#2E7B57', '🤝')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO settlement_stages (name, sort_order, tier, icon, population, days_building) VALUES
+  ('Camp',       1, 1, '🏕', 15,   0),
+  ('Hamlet',     2, 2, '🏘', 40,   1),
+  ('Steading',   3, 3, '🌾', 90,   1),
+  ('Village',    4, 4, '🏘', 165,  2),
+  ('Town',       5, 5, '🏙', 315,  2),
+  ('City',       6, 6, '🌆', 515,  4),
+  ('Metropolis', 7, 7, '🌇', 1000, 2),
+  ('Abbey',      8, 7, '⛪', 515,  2),
+  ('Castle',     9, 7, '🏯', 515,  2)
+ON CONFLICT (name) DO UPDATE SET
+  sort_order    = EXCLUDED.sort_order,
+  tier          = EXCLUDED.tier,
+  icon          = EXCLUDED.icon,
+  population    = EXCLUDED.population,
+  days_building = EXCLUDED.days_building;
+
 -- ── Terrains ──────────────────────────────────────────────────────────────
+
 INSERT INTO terrains (name, color, icon) VALUES
   ('Flat',     '#72c24a', '🌾'),
   ('Arid',     '#d4980a', '🌵'),
@@ -92,6 +51,7 @@ INSERT INTO terrains (name, color, icon) VALUES
 ON CONFLICT (name) DO UPDATE SET color = EXCLUDED.color, icon = EXCLUDED.icon;
 
 -- ── Resources ─────────────────────────────────────────────────────────────
+
 INSERT INTO resources (name, resource_type_id, icon, info, available)
 SELECT v.name, rt.id, v.icon, v.info, v.avail
 FROM (VALUES
@@ -132,8 +92,7 @@ ON CONFLICT (name) DO UPDATE SET
   icon = EXCLUDED.icon, info = EXCLUDED.info, available = EXCLUDED.available;
 
 -- ── Resource locations ────────────────────────────────────────────────────
--- Temp table holds raw (resource, terrain, location, stars) tuples.
--- No ON COMMIT DROP — it lives for the session and is dropped at the end.
+
 DROP TABLE IF EXISTS _rl;
 CREATE TEMP TABLE _rl (res_name TEXT, terrain TEXT, location TEXT, stars INT);
 
@@ -232,13 +191,11 @@ INSERT INTO _rl VALUES
   ('Potatoes','Mountain','Extinct volcano',0), ('Potatoes','Mountain','Mountain',0),
   ('Potatoes','Mountain','Plateau',0);
 
--- Upsert locations (preserves IDs referenced by resource_locations)
 INSERT INTO locations (name, terrain_id)
 SELECT DISTINCT _rl.location, t.id
 FROM _rl JOIN terrains t ON t.name = _rl.terrain
 ON CONFLICT (name, terrain_id) DO NOTHING;
 
--- Upsert resource_locations (DO NOTHING preserves user star ratings)
 INSERT INTO resource_locations (resource_id, location_id, stars)
 SELECT r.id, l.id, _rl.stars
 FROM _rl
@@ -250,39 +207,40 @@ ON CONFLICT (resource_id, location_id) DO NOTHING;
 DROP TABLE _rl;
 
 -- ── Production chains ─────────────────────────────────────────────────────
+
 INSERT INTO production_chain (resource_id, processed_name, processed_category_id, final1_name, final1_category_id, final2_name, final2_category_id)
 SELECT r.id, v.proc, pc_cat.id, v.f1, f1_cat.id, v.f2, f2_cat.id
 FROM (VALUES
-  ('Rye',           'Rye Bread',        'Rye Beer',       'Luxury', NULL,        NULL),
-  ('Salmon',        'Salmon Filet',      'Smoked Salmon',  'Luxury', NULL,        NULL),
-  ('Chicken',       'Chicken Meat',      'Smoked Chicken', 'Luxury', NULL,        NULL),
-  ('Rice',          'White Rice',        'Sake',           'Luxury', NULL,        NULL),
-  ('Pig',           'Pork',              'Sausage',        'Luxury', NULL,        NULL),
-  ('Grapes',        'Grape Juice',       'Wine',           'Luxury', NULL,        NULL),
-  ('Trout',         'Trout Filet',       'Smoked Trout',   'Luxury', NULL,        NULL),
-  ('Barley',        'Malt',              'Whiskey',        'Luxury', NULL,        NULL),
-  ('Milk',          'Butter',            'Cheese',         'Luxury', NULL,        NULL),
-  ('Potatoes',      'Fries',             'Wodka',          'Luxury', NULL,        NULL),
-  ('Maize',         'Maize Flour',       'Tortillas',      'Luxury', NULL,        NULL),
-  ('Chickpeas',     'Chickpea Flour',    'Hummus',         'Luxury', NULL,        NULL),
-  ('Clay',          'Clay Bricks',       'Monument',       'Relic',  'Pot',       'Ware'),
-  ('Granite',       'Granite Blocks',    'Column',         'Relic',  'Mortar',    'Ware'),
-  ('Limestone',     'Limestone Blocks',  'Arch',           'Relic',  'Jar',       'Ware'),
-  ('Sandstone',     'Sandstone Blocks',  'Vase',           'Relic',  'Glass Bowl','Ware'),
-  ('FieldStone',    'Fieldstone Blocks', NULL,             NULL,     NULL,        NULL),
-  ('Iron Ore',      'Iron',              'Ironwork',       'Relic',  'Sword',     'Weapon'),
-  ('Copper Ore',    'Copper',            'Statue',         'Relic',  'Helmet',    'Armor'),
-  ('Tin Ore',       'Tin',               'Chandelier',     'Relic',  'Chainmail', 'Armor'),
-  ('Alloy Ore',     'Alloy',             NULL,             NULL,     NULL,        NULL),
-  ('White Oak',     'White Oak Planks',  'Logbow',         'Weapon', 'Table',     'Ware'),
-  ('Chestnut Wood', 'Chestnut Planks',   'Crossbow',       'Weapon', 'Chest',     'Ware'),
-  ('Palm Tree',     'Flywood',           'Spear',          'Weapon', 'Bookcase',  'Ware'),
-  ('Red Oak',       'Red Oak Planks',    'Catapult',       'Weapon', 'Chair',     'Ware'),
-  ('Rosewood',      'Rosewood Planks',   'Longbow',        'Weapon', 'Hatstand',  'Ware'),
-  ('Maple',         'Maple Planks',      'Crossbow',       'Weapon', 'Stool',     'Ware'),
-  ('Mahogany',      'Mahogany Planks',   'Catapult',       'Weapon', 'Bench',     'Ware'),
-  ('Pine',          'Deal Timber',       'Spear',          'Weapon', 'Desk',      'Ware'),
-  ('Poplar',        'Poplar Planks',     NULL,             NULL,     NULL,        NULL)
+  ('Rye',           'Rye Bread',        'Rye Beer',          'Luxury', NULL,        NULL),
+  ('Salmon',        'Salmon Filet',      'Smoked Salmon',     'Luxury', NULL,        NULL),
+  ('Chicken',       'Chicken Meat',      'Smoked Chicken',    'Luxury', NULL,        NULL),
+  ('Rice',          'White Rice',        'Sake',              'Luxury', NULL,        NULL),
+  ('Pig',           'Pork',              'Sausage',           'Luxury', NULL,        NULL),
+  ('Grapes',        'Grape Juice',       'Wine',              'Luxury', NULL,        NULL),
+  ('Trout',         'Trout Filet',       'Smoked Trout',      'Luxury', NULL,        NULL),
+  ('Barley',        'Malt',              'Whiskey',           'Luxury', NULL,        NULL),
+  ('Milk',          'Butter',            'Cheese',            'Luxury', NULL,        NULL),
+  ('Potatoes',      'Fries',             'Wodka',             'Luxury', NULL,        NULL),
+  ('Maize',         'Maize Flour',       'Tortillas',         'Luxury', NULL,        NULL),
+  ('Chickpeas',     'Chickpea Flour',    'Hummus',            'Luxury', NULL,        NULL),
+  ('Clay',          'Clay Bricks',       'Monument',          'Relic',  'Pot',       'Ware'),
+  ('Granite',       'Granite Blocks',    'Column',            'Relic',  'Mortar',    'Ware'),
+  ('Limestone',     'Limestone Blocks',  'Arch',              'Relic',  'Jar',       'Ware'),
+  ('Sandstone',     'Sandstone Blocks',  'Vase',              'Relic',  'Glass Bowl','Ware'),
+  ('FieldStone',    'Fieldstone Blocks', NULL,                NULL,     NULL,        NULL),
+  ('Iron Ore',      'Iron',              'Ironwork',          'Relic',  'Sword',     'Weapon'),
+  ('Copper Ore',    'Copper',            'Statue',            'Relic',  'Helmet',    'Armor'),
+  ('Tin Ore',       'Tin',               'Chandelier',        'Relic',  'Chainmail', 'Armor'),
+  ('Alloy Ore',     'Alloy',             NULL,                NULL,     NULL,        NULL),
+  ('White Oak',     'White Oak Planks',  'Logbow',            'Weapon', 'Table',     'Ware'),
+  ('Chestnut Wood', 'Chestnut Planks',   'Crossbow',          'Weapon', 'Chest',     'Ware'),
+  ('Palm Tree',     'Flywood',           'Spear',             'Weapon', 'Bookcase',  'Ware'),
+  ('Red Oak',       'Red Oak Planks',    'Catapult',          'Weapon', 'Chair',     'Ware'),
+  ('Rosewood',      'Rosewood Planks',   'Longbow',           'Weapon', 'Hatstand',  'Ware'),
+  ('Maple',         'Maple Planks',      'Crossbow',          'Weapon', 'Stool',     'Ware'),
+  ('Mahogany',      'Mahogany Planks',   'Catapult',          'Weapon', 'Bench',     'Ware'),
+  ('Pine',          'Deal Timber',       'Spear',             'Weapon', 'Desk',      'Ware'),
+  ('Poplar',        'Poplar Planks',     NULL,                NULL,     NULL,        NULL)
 ) AS v(res_name, proc, f1, c1, f2, c2)
 JOIN resources r ON r.name = v.res_name
 JOIN resource_types raw_rt ON raw_rt.id = r.resource_type_id
@@ -302,23 +260,7 @@ ON CONFLICT (resource_id) DO UPDATE SET
   final2_name           = EXCLUDED.final2_name,
   final2_category_id    = EXCLUDED.final2_category_id;
 
--- ── Map regions (UPSERT — preserves IDs referenced by user-data FK cols) ──
-
--- Remove all Scandinavian regions (children first to avoid FK violations, then parents)
-DELETE FROM cell_paints        WHERE region_id IN (SELECT id FROM map_regions WHERE parent_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL));
-DELETE FROM tribe_markers      WHERE region_id IN (SELECT id FROM map_regions WHERE parent_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL));
-DELETE FROM player_settlements WHERE region_id IN (SELECT id FROM map_regions WHERE parent_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL));
-DELETE FROM map_regions WHERE parent_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Sweden','Finland') AND parent_id IS NULL);
-
-DELETE FROM cell_paints        WHERE region_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Norway North','Norway South','Sweden','Sweden North','Sweden South','Finland','Finland North','Finland South') AND parent_id IS NULL);
-DELETE FROM tribe_markers      WHERE region_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Norway North','Norway South','Sweden','Sweden North','Sweden South','Finland','Finland North','Finland South') AND parent_id IS NULL);
-DELETE FROM player_settlements WHERE region_id IN (SELECT id FROM map_regions WHERE name IN ('Norway','Norway North','Norway South','Sweden','Sweden North','Sweden South','Finland','Finland North','Finland South') AND parent_id IS NULL);
-DELETE FROM map_regions WHERE name IN ('Norway','Norway North','Norway South','Sweden','Sweden North','Sweden South','Finland','Finland North','Finland South') AND parent_id IS NULL;
-
-DELETE FROM cell_paints        WHERE region_id IN (SELECT id FROM map_regions WHERE name = 'Alaska');
-DELETE FROM tribe_markers      WHERE region_id IN (SELECT id FROM map_regions WHERE name = 'Alaska');
-DELETE FROM player_settlements WHERE region_id IN (SELECT id FROM map_regions WHERE name = 'Alaska');
-DELETE FROM map_regions WHERE name = 'Alaska' AND parent_id IS NOT NULL;
+-- ── Map regions ───────────────────────────────────────────────────────────
 
 INSERT INTO map_regions (name, parent_id, lat_min, lat_max, lng_min, lng_max, center_lat, center_lng, zoom) VALUES
   ('Netherlands',    NULL, 50.7, 53.6,   3.3,   7.3, 52.3,   5.3, 8),

@@ -8,7 +8,9 @@ router.get('/config', (_req, res) => {
     maxTribeMarkers:      config.maxTribeMarkers,
     maxSettlements:       config.maxSettlements,
     maxPublicSettlements: config.maxPublicSettlements,
-    starEditing:          config.starEditing,
+    starEditing:                  config.starEditing,
+    publicSettlementsRequireAuth: config.publicSettlementsRequireAuth,
+    registrationEnabled:  config.registrationEnabled,
     contact:              config.contact,
   })
 })

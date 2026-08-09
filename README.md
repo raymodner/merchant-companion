@@ -1,4 +1,4 @@
-# Merchant Community Map
+# Merchant Companion
 
 A collaborative map tool for tracking terrain, tribes, settlements, and resources. Built with Vue 3, Express 5, and PostgreSQL, running fully in Docker.
 
@@ -12,8 +12,7 @@ A collaborative map tool for tracking terrain, tribes, settlements, and resource
 
 ```bash
 cp .env.dist .env
-cp backend/.env.dist backend/.env
-# Edit .env and backend/.env with your values
+# Edit .env with your values
 
 docker compose up --build -d
 ```
@@ -33,37 +32,59 @@ docker compose down && docker compose up --build -d
 
 ### Environment variables
 
-| Variable | Where | Required | Notes |
+| Variable | Required | Default | Notes |
 |---|---|---|---|
-| `DB_NAME` | root `.env` | yes | Postgres database name |
-| `DB_USER` | root `.env` | yes | Postgres user |
-| `DB_PASSWORD` | root `.env` | yes | Postgres password |
-| `JWT_SECRET` | `backend/.env` | yes | Generate: `openssl rand -hex 64` |
-| `ALLOWED_ORIGINS` | `backend/.env` / root `.env` | yes | Comma-separated allowed origins, e.g. `http://localhost:5174` |
-| `APP_URL` | root `.env` | prod only | Public URL, used by prod compose |
+| `DB_NAME` | yes | — | Postgres database name |
+| `DB_USER` | yes | — | Postgres user |
+| `DB_PASSWORD` | yes | — | Postgres password |
+| `JWT_SECRET` | yes | — | Generate: `openssl rand -hex 64` |
+| `ALLOWED_ORIGINS` | yes | `http://localhost:5174` | Comma-separated allowed origins |
+| `APP_URL` | prod only | — | Public URL, used by the prod compose |
+| `MAX_TRIBE_MARKERS` | no | `50` | Tribe markers per user |
+| `MAX_SETTLEMENTS` | no | `50` | Total settlements per user |
+| `MAX_PUBLIC_SETTLEMENTS` | no | `10` | Public settlements per user |
+| `STAR_EDITING` | no | `true` | Set to `false` to disable community star ratings |
+| `PUBLIC_SETTLEMENTS_REQUIRE_AUTH` | no | `false` | Set to `true` to hide public settlements from guests |
+| `REGISTRATION_OPEN` | no | `true` | Set to `false` to close registration |
+| `REGISTRATION_ALLOWLIST` | no | — | Comma-separated emails; overrides `REGISTRATION_OPEN` |
+| `CONTACT_NAME` | no | — | Shown in privacy policy |
+| `CONTACT_DISCORD` | no | — | Discord invite URL, shown in privacy policy |
+| `CONTACT_EMAIL` | no | — | Email address, shown in privacy policy |
 
 ## Deploying to production
 
+**First-time install:**
 ```bash
-cp .env.dist .env
-# Fill in all values including ALLOWED_ORIGINS=https://yourdomain.com and APP_URL
-
-git pull
-docker compose -f docker-compose.prod.yml up --build -d
+bash install.sh
 ```
+Creates `.env` from `.env.dist` if it doesn't exist, guides you through required values, builds and starts all containers, waits for migrations, and seeds game data.
+
+**Subsequent updates:**
+```bash
+bash deploy.sh
+```
+Pulls latest changes, rebuilds containers, and restarts. Pending migrations apply automatically on API startup.
 
 The production compose builds the Vue app and serves it through nginx on port 8080. The API is not exposed directly; nginx reverse-proxies it.
 
 ### Database migrations
 
-Schema changes are in `setup.sql` (idempotent — safe to re-run):
+Schema is managed with Prisma Migrate. Migrations live in `backend/prisma/migrations/` and are applied automatically when the API container starts (`prisma migrate deploy` runs before the server).
+
+**Create a migration** (after editing `backend/prisma/schema.prisma`):
 ```bash
-docker exec -i terrain_db psql -U terrain -d terrain_map < setup.sql
+docker exec merchant-companion_api pnpm prisma:migrate
+# prompts for a migration name, generates SQL, applies it, regenerates the client
 ```
 
-Game data is in `seed.sql` (pure upserts — safe to re-run):
+**Apply pending migrations manually** (e.g. on the production server after `git pull`):
 ```bash
-docker exec -i terrain_db psql -U terrain -d terrain_map < seed.sql
+docker exec merchant-companion_api pnpm prisma:deploy
+```
+
+**Fresh database setup** — schema is created by migrations on first API start. Seed game data manually after:
+```bash
+docker exec -i merchant-companion_db psql -U merchant-companion -d merchant-companion < seed.sql
 ```
 
 ## Architecture
@@ -81,11 +102,13 @@ backend/src/
   auth.js             JWT cookie middleware
   prisma.js           PrismaClient singleton
   lib/
+    config.js         Centralised config from env vars (limits, features, contact)
     validate.js       Zod middleware helpers: body(), uuidParam()
     resolvers.js      Cached DB lookups for terrain/tribe/resource types
     cleanup.js        Monthly job: removes superseded cell_paint rows
   routes/
     auth.js           register, login, /me, preferences, password, logout
+    config.js         GET /config — public feature flags and limits
     lookup.js         GET /terrains, /tribes, /settlement-stages
     regions.js        GET /regions
     resources.js      GET /resources, PATCH /resource-locations/:id
@@ -97,28 +120,18 @@ backend/src/
 ### Key design decisions
 
 - **Terrain painting is append-only** — new rows are inserted per paint action; the latest paint per cell is queried with `DISTINCT ON`. A background job cleans up superseded rows monthly.
-- **User limits** enforced in serializable transactions to prevent race conditions: 50 tribe markers, 50 settlements, 10 public settlements per user.
+- **User limits** enforced in serializable transactions to prevent race conditions: 50 tribe markers, 50 settlements, 10 public settlements per user (all configurable via env).
 - **Auth via HttpOnly cookies** — no tokens in JS; `credentials: 'include'` on every fetch.
 - **All Leaflet objects stay in `TheMap.vue`** — stores hold plain data; TheMap syncs Leaflet reactively.
 
 ## Features
 
 - **Terrain painting** — paint grid cells with terrain types; shared across all users per region
-- **Tribe markers** — place and label tribe camp/settlement markers on the map (up to 50)
-- **Player settlements** — track your own settlements with stage and visibility (up to 50 total, 10 public)
-- **Resource lookup** — find resources by name, type, or chain; filter by min-stars rating
+- **Tribe markers** — place and label tribe markers on the map
+- **Player settlements** — track your own settlements with stage, resource type, and public/private visibility
+- **Resource lookup** — find resources by name, type, or production chain; filter by star rating
 - **Region navigation** — country + state/sub-region dropdown with server-side preference saving
 - **Dark / light theme** — system preference + manual toggle, no flash on load
 - **Account management** — register, login, change password
-
-## Development notes
-
-After changing `backend/prisma/schema.prisma`, regenerate the Prisma client:
-```bash
-docker exec terrain_api pnpm prisma:generate
-```
-
-Run ad-hoc SQL:
-```bash
-docker exec -i terrain_db psql -U terrain -d terrain_map -c "SELECT ..."
-```
+- **Cookie notice** — GDPR-friendly dismissible notice linking to Terms and Privacy Policy
+- **Configurable registration** — open, closed, or allowlist-only via env vars

@@ -12,6 +12,7 @@ router.get('/player-settlements/:regionId', optionalAuth, uuidParam('regionId'),
   const { regionId } = req.params
   try {
     const userId = req.user?.id ?? null
+    if (config.publicSettlementsRequireAuth && !userId) return res.json({ settlements: [] })
     const rows = await prisma.playerSettlement.findMany({
       where: {
         regionId,

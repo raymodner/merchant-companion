@@ -201,6 +201,26 @@
   min-height: 18px;
 }
 
+.auth-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  line-height: 1.4;
+}
+.auth-checkbox input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--c-accent);
+}
+.auth-checkbox a {
+  color: var(--c-accent);
+  text-decoration: underline;
+}
+
 /* ── Sidebar top bar (auth + theme toggle) ──────────────────────── */
 #sidebar-top-bar {
   display: flex;

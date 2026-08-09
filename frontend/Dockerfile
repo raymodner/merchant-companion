@@ -1,7 +1,7 @@
 FROM node:20-alpine AS dev
 RUN npm install -g pnpm
 WORKDIR /app
-COPY --chown=node:node package.json pnpm-lock.yaml* ./
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --ignore-scripts
 EXPOSE 5173
 CMD ["pnpm", "dev"]
@@ -9,7 +9,7 @@ CMD ["pnpm", "dev"]
 FROM node:20-alpine AS build
 RUN npm install -g pnpm
 WORKDIR /app
-COPY --chown=node:node package.json pnpm-lock.yaml* ./
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --ignore-scripts
 COPY --chown=node:node . .
 ARG VITE_APP_URL=http://localhost:5174
