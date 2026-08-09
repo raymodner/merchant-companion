@@ -104,16 +104,15 @@ ALTER TABLE settlement_stages
   ADD COLUMN IF NOT EXISTS days_building SMALLINT;
 
 INSERT INTO settlement_stages (name, sort_order, tier, icon, population, days_building) VALUES
-  ('Camp',       1,  1, '🏕', 15,   0),
-  ('Hamlet',     2,  2, '🏘', 40,   1),
-  ('Steading',   3,  3, '🌾', NULL, 1),
-  ('Homestead',  4,  4, '🏡', NULL, NULL),
-  ('Village',    5,  5, '🏘', NULL, NULL),
-  ('Town',       6,  6, '🏙', NULL, NULL),
-  ('City',       7,  7, '🌆', NULL, NULL),
-  ('Metropolis', 8,  8, '🌇', NULL, NULL),
-  ('Abbey',      9,  8, '⛪', NULL, NULL),
-  ('Castle',     10, 8, '🏯', NULL, NULL)
+  ('Camp',       1, 1, '🏕', 15,   0),
+  ('Hamlet',     2, 2, '🏘', 40,   1),
+  ('Steading',   3, 3, '🌾', 90,   1),
+  ('Village',    4, 4, '🏘', 165,  2),
+  ('Town',       5, 5, '🏙', 315,  2),
+  ('City',       6, 6, '🌆', 515,  4),
+  ('Metropolis', 7, 7, '🌇', 1000, 2),
+  ('Abbey',      8, 7, '⛪', 515,  2),
+  ('Castle',     9, 7, '🏯', 515,  2)
 ON CONFLICT (name) DO UPDATE SET
   sort_order    = EXCLUDED.sort_order,
   tier          = EXCLUDED.tier,
@@ -121,7 +120,12 @@ ON CONFLICT (name) DO UPDATE SET
   population    = EXCLUDED.population,
   days_building = EXCLUDED.days_building;
 
-DELETE FROM settlement_stages WHERE name IN ('Selo', 'Burgh');
+-- Migrate any settlements referencing the removed Homestead stage to Village
+UPDATE player_settlements
+  SET stage_id = (SELECT id FROM settlement_stages WHERE name = 'Village')
+  WHERE stage_id = (SELECT id FROM settlement_stages WHERE name = 'Homestead');
+
+DELETE FROM settlement_stages WHERE name IN ('Selo', 'Burgh', 'Homestead');
 
 -- Drop old merged table if it exists
 DROP TABLE IF EXISTS settlements;

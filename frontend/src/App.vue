@@ -2,12 +2,14 @@
 import { ref, provide, watch, onMounted } from 'vue'
 import TheMap          from './components/TheMap.vue'
 import TheSidebar      from './components/TheSidebar.vue'
+import CookieNotice    from './components/CookieNotice.vue'
 import AuthModal       from './components/modals/AuthModal.vue'
 import ResourceModal   from './components/modals/ResourceModal.vue'
 import TribeEditModal        from './components/modals/TribeEditModal.vue'
 import SettleEditModal       from './components/modals/SettleEditModal.vue'
 import ChangePasswordModal   from './components/modals/ChangePasswordModal.vue'
 
+import { useConfigStore }      from '@/stores/config.js'
 import { useAuthStore }        from '@/stores/auth.js'
 import { useRegionStore }      from '@/stores/region.js'
 import { usePaintStore }       from '@/stores/paint.js'
@@ -16,6 +18,7 @@ import { useSettlementsStore } from '@/stores/settlements.js'
 import { useResourcesStore }   from '@/stores/resources.js'
 import { useUiStore }          from '@/stores/ui.js'
 
+const configStore      = useConfigStore()
 const authStore        = useAuthStore()
 const regionStore      = useRegionStore()
 const paintStore       = usePaintStore()
@@ -29,6 +32,7 @@ provide('mapRef', mapRef)
 
 onMounted(async () => {
   await Promise.all([
+    configStore.fetchConfig(),
     paintStore.fetchTerrains(),
     regionStore.fetchRegions(),
     tribesStore.fetchTribes(),
@@ -70,5 +74,6 @@ watch(() => authStore.user, async (newUser, oldUser) => {
     <ResourceModal         v-if="resourcesStore.isOpen" />
     <TribeEditModal  />
     <SettleEditModal />
+    <CookieNotice />
   </div>
 </template>

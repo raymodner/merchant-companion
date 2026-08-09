@@ -5,11 +5,13 @@ import { useResourcesStore } from '@/stores/resources.js'
 import { usePaintStore }     from '@/stores/paint.js'
 import { useAuthStore }      from '@/stores/auth.js'
 import { useUiStore }        from '@/stores/ui.js'
+import { useConfigStore }    from '@/stores/config.js'
 
-const rs        = useResourcesStore()
-const paintStore = usePaintStore()
-const authStore  = useAuthStore()
-const uiStore    = useUiStore()
+const rs          = useResourcesStore()
+const paintStore  = usePaintStore()
+const authStore   = useAuthStore()
+const uiStore     = useUiStore()
+const configStore = useConfigStore()
 
 const typeOptions = computed(() => [
   { value: '', label: 'All Types' },
@@ -56,7 +58,7 @@ function close() { rs.closeModal() }
         <div class="res-modal-title">📦 Resource Lookup</div>
 
         <!-- Edit bar -->
-        <div id="res-edit-bar">
+        <div v-if="configStore.starEditing" id="res-edit-bar">
           <button id="res-edit-btn" :class="{ active: rs.editMode }" @click="toggleEdit">
             {{ rs.editMode ? '✎ Done' : '✎ Edit Ratings' }}
           </button>

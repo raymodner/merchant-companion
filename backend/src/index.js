@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser'
 import rateLimit from 'express-rate-limit'
 
 import { startCleanup } from './lib/cleanup.js'
+import configRoutes      from './routes/config.js'
 import authRoutes        from './routes/auth.js'
 import lookupRoutes      from './routes/lookup.js'
 import regionsRoutes     from './routes/regions.js'
@@ -52,6 +53,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
 app.use('/api', readLimiter)
 app.use('/api', writeLimiter)
+app.use('/api',              configRoutes)
 app.use('/api/auth',         authRoutes)
 app.use('/api',              lookupRoutes)
 app.use('/api',              regionsRoutes)

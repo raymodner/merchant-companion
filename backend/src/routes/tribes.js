@@ -4,6 +4,7 @@ import { prisma } from '../prisma.js'
 import { auth } from '../auth.js'
 import { body, uuidParam, uuid, lat, lng } from '../lib/validate.js'
 import { resolveTribeType } from '../lib/resolvers.js'
+import { config } from '../lib/config.js'
 
 const router = Router()
 
@@ -59,7 +60,7 @@ router.post('/tribe-markers', auth, body(postTribeMarkerSchema), async (req, res
     // Count check and insert in a serializable transaction to prevent races
     const marker = await prisma.$transaction(async (tx) => {
       const tribeCount = await tx.tribeMarker.count({ where: { placedBy: req.user.id } })
-      if (tribeCount >= 50) throw Object.assign(new Error('Tribe marker limit reached (50 max)'), { code: 'LIMIT' })
+      if (tribeCount >= config.maxTribeMarkers) throw Object.assign(new Error(`Tribe marker limit reached (${config.maxTribeMarkers} max)`), { code: 'LIMIT' })
 
       return tx.tribeMarker.create({
         data: { placedBy: req.user.id, tribeId: tribe_id, tribeTypeId, regionId: region_id, lat: latVal, lng: lngVal },

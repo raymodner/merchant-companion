@@ -4,6 +4,7 @@ import { prisma } from '../prisma.js'
 import { auth, optionalAuth } from '../auth.js'
 import { body, uuidParam, uuid, lat, lng } from '../lib/validate.js'
 import { resolveResourceType } from '../lib/resolvers.js'
+import { config } from '../lib/config.js'
 
 const router = Router()
 
@@ -72,11 +73,11 @@ router.post('/player-settlements', auth, body(postSettlementSchema), async (req,
     // Count checks and insert in a serializable transaction to prevent races
     const settlement = await prisma.$transaction(async (tx) => {
       const totalCount = await tx.playerSettlement.count({ where: { userId: req.user.id } })
-      if (totalCount >= 50) throw Object.assign(new Error('Settlement limit reached (50 max)'), { code: 'LIMIT' })
+      if (totalCount >= config.maxSettlements) throw Object.assign(new Error(`Settlement limit reached (${config.maxSettlements} max)`), { code: 'LIMIT' })
 
       if (is_public === true) {
         const publicCount = await tx.playerSettlement.count({ where: { userId: req.user.id, isPublic: true } })
-        if (publicCount >= 10) throw Object.assign(new Error('Public settlement limit reached (10 max)'), { code: 'LIMIT' })
+        if (publicCount >= config.maxPublicSettlements) throw Object.assign(new Error(`Public settlement limit reached (${config.maxPublicSettlements} max)`), { code: 'LIMIT' })
       }
 
       return tx.playerSettlement.create({
@@ -133,7 +134,7 @@ router.patch('/player-settlements/:id', auth, uuidParam('id'), body(patchSettlem
       const publicCount = await prisma.playerSettlement.count({
         where: { userId: req.user.id, isPublic: true, NOT: { id: req.params.id } },
       })
-      if (publicCount >= 10) return res.status(400).json({ error: 'Public settlement limit reached (10 max)' })
+      if (publicCount >= config.maxPublicSettlements) return res.status(400).json({ error: `Public settlement limit reached (${config.maxPublicSettlements} max)` })
     }
 
     // Verify stage exists if provided

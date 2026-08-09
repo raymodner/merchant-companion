@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy – Merchant Community Map</title>
+  <style>
+    :root {
+      --c-bg: #0d0702;
+      --c-surface: #1a0d04;
+      --c-border: #3a2810;
+      --c-text: #e8d5a8;
+      --c-text-2: #d4b87a;
+      --c-text-3: #7a5a28;
+      --c-accent: #c9973a;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --c-bg: #f5ead0;
+        --c-surface: #ece0c2;
+        --c-border: #b89060;
+        --c-text: #281808;
+        --c-text-2: #5c3a18;
+        --c-text-3: #8a6030;
+        --c-accent: #9a7020;
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--c-bg);
+      color: var(--c-text);
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1rem;
+      line-height: 1.7;
+      padding: 40px 16px 80px;
+    }
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .back {
+      display: inline-block;
+      color: var(--c-accent);
+      text-decoration: none;
+      font-family: system-ui, sans-serif;
+      font-size: 0.85rem;
+      margin-bottom: 32px;
+      letter-spacing: 0.03em;
+    }
+    .back:hover { text-decoration: underline; }
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--c-accent);
+      letter-spacing: 0.02em;
+      margin-bottom: 6px;
+    }
+    .updated {
+      color: var(--c-text-3);
+      font-family: system-ui, sans-serif;
+      font-size: 0.82rem;
+      margin-bottom: 36px;
+    }
+    h2 {
+      font-size: 1.1rem;
+      color: var(--c-text-2);
+      margin-top: 36px;
+      margin-bottom: 10px;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid var(--c-border);
+      padding-bottom: 6px;
+    }
+    p { margin-bottom: 14px; }
+    ul { padding-left: 20px; margin-bottom: 14px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--c-accent); }
+    a:hover { text-decoration: underline; }
+    .footer {
+      margin-top: 56px;
+      padding-top: 20px;
+      border-top: 1px solid var(--c-border);
+      color: var(--c-text-3);
+      font-family: system-ui, sans-serif;
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back" href="/">← Back to map</a>
+
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: July 2026</p>
+
+    <p>This policy explains what data Merchant Community Map collects, why, and how you can control it.</p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li><strong>Account data</strong> — your chosen username, email address, and a bcrypt-hashed password. Your plaintext password is never stored.</li>
+      <li><strong>Map content</strong> — terrain paints, tribe markers, and settlement data you place on the map.</li>
+      <li><strong>Preferences</strong> — your saved region preference (country / state) so the map opens in the right place when you log in.</li>
+      <li><strong>Server logs</strong> — IP addresses and request timestamps, kept for up to 30 days for security and rate-limiting purposes.</li>
+    </ul>
+
+    <h2>Why we collect it</h2>
+    <ul>
+      <li><strong>Account data</strong> is processed to provide and secure your account (legal basis: performance of a contract, Art. 6(1)(b) GDPR).</li>
+      <li><strong>IP addresses / logs</strong> are processed to protect the service against abuse (legal basis: legitimate interest, Art. 6(1)(f) GDPR).</li>
+    </ul>
+
+    <h2>Cookies</h2>
+    <p>We use exactly one cookie: an authentication token that keeps you logged in for up to 24 hours. It is set as <code>HttpOnly</code> and is strictly necessary for the service to function. No tracking, advertising, or analytics cookies are used.</p>
+
+    <h2>Who we share data with</h2>
+    <p>No one. We do not sell, rent, or share your personal data with any third party. There are no analytics providers, ad networks, or CDN services that receive your data.</p>
+
+    <h2>How long we keep it</h2>
+    <p>Account data (username, email, password hash, preferences, and map content) is retained for as long as your account is active. Server logs are automatically deleted after 30 days. You may request deletion of your account and all associated data at any time.</p>
+
+    <h2>Your rights</h2>
+    <p>Under the GDPR you have the right to:</p>
+    <ul>
+      <li><strong>Access</strong> — request a copy of your personal data.</li>
+      <li><strong>Rectification</strong> — correct inaccurate data.</li>
+      <li><strong>Erasure</strong> — request deletion of your account and data.</li>
+      <li><strong>Restriction</strong> — ask us to limit processing in certain circumstances.</li>
+      <li><strong>Portability</strong> — receive your data in a machine-readable format.</li>
+      <li><strong>Objection</strong> — object to processing based on legitimate interest.</li>
+    </ul>
+    <p>To exercise any of these rights, reach us via our <a id="contact-link-inline" href="#" target="_blank" rel="noopener">Discord server</a>. We will respond within 30 days.</p>
+    <p>You also have the right to lodge a complaint with the Dutch supervisory authority: <a href="https://autoriteitpersoonsgegevens.nl" target="_blank" rel="noopener">Autoriteit Persoonsgegevens</a>.</p>
+
+    <h2>Changes to this policy</h2>
+    <p>If we make material changes, we will update the date above. Continued use of the service after changes constitutes acceptance.</p>
+
+    <h2>Contact</h2>
+    <p id="contact-name-line"></p>
+    <div id="contact-links"></div>
+
+    <div class="footer">
+      Merchant Community Map &nbsp;·&nbsp; <a href="/terms.html">Terms of Service</a>
+    </div>
+  </div>
+  <script>
+    fetch('/api/config').then(r => r.json()).then(cfg => {
+      const c = cfg.contact || {}
+      if (c.name) document.getElementById('contact-name-line').textContent = 'Operated by ' + c.name + '.'
+      if (c.discord) document.getElementById('contact-link-inline').href = c.discord
+      const links = []
+      if (c.discord) links.push('<a href="' + c.discord + '" target="_blank" rel="noopener">Join our Discord server</a>')
+      if (c.email)   links.push('<a href="mailto:' + c.email + '">' + c.email + '</a>')
+      document.getElementById('contact-links').innerHTML = links.map(l => '<p>' + l + '</p>').join('')
+    }).catch(() => {})
+  </script>
+</body>
+</html>
