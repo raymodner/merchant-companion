@@ -130,35 +130,40 @@ const patchSettlementSchema = z.object({
 router.patch('/player-settlements/:id', auth, uuidParam('id'), body(patchSettlementSchema), async (req, res) => {
   const { stage_id, resource_type, name, is_public, lat: latVal, lng: lngVal } = req.body
   try {
-    // Enforce public settlement limit when making a settlement public
-    if (is_public === true) {
-      const publicCount = await prisma.playerSettlement.count({
-        where: { userId: req.user.id, isPublic: true, NOT: { id: req.params.id } },
-      })
-      if (publicCount >= config.maxPublicSettlements) return res.status(400).json({ error: `Public settlement limit reached (${config.maxPublicSettlements} max)` })
-    }
-
-    // Verify stage exists if provided
+    // Verify stage exists if provided (safe to do outside the transaction)
     if (stage_id !== undefined) {
       const stage = await prisma.settlementStage.findUnique({ where: { id: stage_id }, select: { id: true } })
       if (!stage) return res.status(400).json({ error: 'Invalid stage_id' })
     }
 
     const resourceTypeId = resource_type !== undefined ? await resolveResourceType(resource_type) : undefined
-    const { count } = await prisma.playerSettlement.updateMany({
-      where: { id: req.params.id, userId: req.user.id },
-      data: {
-        ...(stage_id !== undefined && { stageId: stage_id }),
-        ...(resourceTypeId !== undefined && { resourceTypeId }),
-        ...(name !== undefined && { name: name || null }),
-        ...(is_public != null && { isPublic: is_public === true }),
-        ...(latVal !== undefined && { lat: latVal }),
-        ...(lngVal !== undefined && { lng: lngVal }),
-      },
-    })
+
+    // Public-limit check and update in a single serializable transaction (mirrors POST)
+    const { count } = await prisma.$transaction(async (tx) => {
+      if (is_public === true) {
+        const publicCount = await tx.playerSettlement.count({
+          where: { userId: req.user.id, isPublic: true, NOT: { id: req.params.id } },
+        })
+        if (publicCount >= config.maxPublicSettlements)
+          throw Object.assign(new Error(`Public settlement limit reached (${config.maxPublicSettlements} max)`), { code: 'LIMIT' })
+      }
+      return tx.playerSettlement.updateMany({
+        where: { id: req.params.id, userId: req.user.id },
+        data: {
+          ...(stage_id !== undefined && { stageId: stage_id }),
+          ...(resourceTypeId !== undefined && { resourceTypeId }),
+          ...(name !== undefined && { name: name || null }),
+          ...(is_public != null && { isPublic: is_public === true }),
+          ...(latVal !== undefined && { lat: latVal }),
+          ...(lngVal !== undefined && { lng: lngVal }),
+        },
+      })
+    }, { isolationLevel: 'Serializable' })
+
     if (!count) return res.status(404).json({ error: 'Not found or not yours' })
     res.json({ ok: true })
   } catch (err) {
+    if (err.code === 'LIMIT') return res.status(400).json({ error: err.message })
     if (err.code === 'P2003') return res.status(400).json({ error: 'Invalid reference' })
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })

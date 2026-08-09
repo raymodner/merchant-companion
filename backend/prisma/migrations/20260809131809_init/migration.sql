@@ -6,6 +6,7 @@ CREATE TABLE "users" (
     "password" VARCHAR(255) NOT NULL,
     "preferred_country" VARCHAR(100),
     "preferred_state" VARCHAR(100),
+    "token_version" INTEGER NOT NULL DEFAULT 0,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")

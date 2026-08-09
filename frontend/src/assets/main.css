@@ -877,6 +877,23 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; backgrou
 .res-loc-stars-unknown { opacity: 0.5; }
 #resource-results.edit-mode .res-loc-stars-wrap { cursor: pointer; }
 
+.star-btn {
+  background: none;
+  border: none;
+  padding: 0 1px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--c-text-3);
+  transition: color 0.1s;
+}
+.star-btn.filled { color: var(--c-accent); }
+.star-btn:hover { color: var(--c-accent); }
+.star-btn-reset { color: var(--c-text-3); font-size: 10px; }
+.star-btn-reset:hover { color: #c0392b; }
+.star-btn-reset.active { color: var(--c-accent); }
+
 /* ── Edit ratings bar ───────────────────────────────────────────── */
 #res-edit-bar {
   display: flex;

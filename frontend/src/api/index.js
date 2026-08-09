@@ -23,28 +23,6 @@ export const api = {
     } catch {}
   },
 
-  async deleteTerrain(regionId) {
-    try {
-      await fetch(`${BASE}/terrain/${regionId}`, {
-        method: 'DELETE',
-        headers: json,
-        credentials: 'include',
-      })
-    } catch {}
-  },
-
-  async importTerrain(regionId, data) {
-    try {
-      const res = await fetch(`${BASE}/terrain/${regionId}/import`, {
-        method: 'POST',
-        headers: json,
-        credentials: 'include',
-        body: JSON.stringify({ data }),
-      })
-      return res.ok
-    } catch { return false }
-  },
-
   // ── Lookup ────────────────────────────────────────────────────────────────
   async getResources() {
     try {

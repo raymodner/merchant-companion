@@ -51,6 +51,73 @@ docker compose down && docker compose up --build -d
 | `CONTACT_DISCORD` | no | — | Discord invite URL, shown in privacy policy |
 | `CONTACT_EMAIL` | no | — | Email address, shown in privacy policy |
 
+## Running without Docker
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 11+ (`npm install -g pnpm`)
+- PostgreSQL 15+
+
+### 1. Create a database
+
+```sql
+CREATE USER "merchant-companion" WITH PASSWORD 'yourpassword';
+CREATE DATABASE "merchant-companion" OWNER "merchant-companion";
+```
+
+### 2. Configure the backend
+
+```bash
+cp backend/.env.dist backend/.env
+# Edit backend/.env — set DATABASE_URL, JWT_SECRET, and ALLOWED_ORIGINS at minimum
+```
+
+### 3. Install dependencies
+
+```bash
+cd backend && pnpm install
+```
+
+### 4. Apply migrations and seed
+
+```bash
+pnpm prisma:generate
+pnpm prisma:deploy
+psql -U merchant-companion -d merchant-companion < ../seed.sql
+```
+
+### 5. Start the backend
+
+```bash
+pnpm start          # production
+# or
+pnpm dev            # development (restarts on file changes)
+```
+
+The API listens on port 3001 by default (set `PORT` in `.env` to change it).
+
+### 6. Start the frontend
+
+For **development**:
+
+```bash
+cd frontend && pnpm install && pnpm dev
+```
+
+Frontend is available at http://localhost:5173. Set `ALLOWED_ORIGINS=http://localhost:5173` in `backend/.env`.
+
+For **production**, build the static files and serve them with any web server (nginx, Caddy, etc.):
+
+```bash
+cd frontend && pnpm install && pnpm build
+# Output is in frontend/dist/
+```
+
+Point your web server at `frontend/dist/` and proxy `/api/` requests to the backend. See `frontend/nginx.conf` for a reference nginx configuration.
+
+---
+
 ## Deploying to production
 
 **First-time install:**

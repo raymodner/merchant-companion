@@ -186,7 +186,7 @@ function close() { rs.closeModal() }
                     <button
                       v-for="n in [1,2,3,4,5]"
                       :key="n"
-                      class="star-btn"
+                      :class="['star-btn', n <= loc.stars ? 'filled' : '']"
                       @click.stop="setStar(loc.id, n)"
                     >{{ n <= loc.stars ? '★' : '☆' }}</button>
                   </template>

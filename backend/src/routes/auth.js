@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
+import jwt from 'jsonwebtoken' // used for jwt.decode in logout
 import rateLimit from 'express-rate-limit'
 import { prisma } from '../prisma.js'
-import { auth } from '../auth.js'
+import { auth, signToken } from '../auth.js'
 import { body } from '../lib/validate.js'
 import { config } from '../lib/config.js'
 
@@ -18,8 +18,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 })
 
-const secret = () => process.env.JWT_SECRET
-const DUMMY_HASH = '$2a$10$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+const DUMMY_HASH = '$2b$12$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 const COOKIE_OPTS = {
   httpOnly: true,
   sameSite: 'lax',
@@ -63,10 +62,9 @@ router.post('/register', authLimiter, body(registerSchema), async (req, res) => 
   }
 
   try {
-    const hash = await bcrypt.hash(password, 10)
+    const hash = await bcrypt.hash(password, 12)
     const user = await prisma.user.create({ data: { username, email, password: hash } })
-    const token = jwt.sign({ id: user.id, username: user.username }, secret(), { expiresIn: '24h' })
-    res.cookie('token', token, COOKIE_OPTS).json({ user: toPublicUser(user) })
+    res.cookie('token', signToken(user), COOKIE_OPTS).json({ user: toPublicUser(user) })
   } catch (err) {
     if (err.code === 'P2002') return res.status(409).json({ error: 'Username or email already taken' })
     console.error(err)
@@ -78,7 +76,7 @@ const loginSchema = z.object({
   email: z.string({ required_error: 'Email and password required' })
     .trim()
     .email({ message: 'Invalid email address' }),
-  password: z.string({ required_error: 'Email and password required' }),
+  password: z.string({ required_error: 'Email and password required' }).max(72),
 })
 
 router.post('/login', authLimiter, body(loginSchema), async (req, res) => {
@@ -87,8 +85,7 @@ router.post('/login', authLimiter, body(loginSchema), async (req, res) => {
     const user = await prisma.user.findUnique({ where: { email } })
     const valid = await bcrypt.compare(password, user?.password ?? DUMMY_HASH)
     if (!user || !valid) return res.status(401).json({ error: 'Invalid credentials' })
-    const token = jwt.sign({ id: user.id, username: user.username }, secret(), { expiresIn: '24h' })
-    res.cookie('token', token, COOKIE_OPTS).json({ user: toPublicUser(user) })
+    res.cookie('token', signToken(user), COOKIE_OPTS).json({ user: toPublicUser(user) })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })
@@ -129,7 +126,7 @@ router.patch('/preferences', auth, body(preferencesSchema), async (req, res) => 
 })
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string({ required_error: 'currentPassword and newPassword required' }),
+  currentPassword: z.string({ required_error: 'currentPassword and newPassword required' }).max(72),
   newPassword: z.string({ required_error: 'currentPassword and newPassword required' })
     .min(8, { message: 'New password must be at least 8 characters' })
     .max(72, { message: 'New password must be 72 characters or fewer' }),
@@ -142,17 +139,29 @@ router.patch('/password', authLimiter, auth, body(changePasswordSchema), async (
     if (!user) return res.status(404).json({ error: 'User not found' })
     const valid = await bcrypt.compare(currentPassword, user.password)
     if (!valid) return res.status(401).json({ error: 'Current password is incorrect' })
-    const hash = await bcrypt.hash(newPassword, 10)
-    await prisma.user.update({ where: { id: req.user.id }, data: { password: hash } })
-    const token = jwt.sign({ id: user.id, username: user.username }, secret(), { expiresIn: '24h' })
-    res.cookie('token', token, COOKIE_OPTS).json({ ok: true })
+    const hash = await bcrypt.hash(newPassword, 12)
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { password: hash, tokenVersion: { increment: 1 } },
+    })
+    res.cookie('token', signToken(updated), COOKIE_OPTS).json({ ok: true })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
 
-router.post('/logout', (_req, res) => {
+router.post('/logout', authLimiter, async (req, res) => {
+  const token = req.cookies?.token
+  if (token) {
+    try {
+      const { id } = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'], ignoreExpiration: true })
+      if (id) await prisma.user.update({ where: { id }, data: { tokenVersion: { increment: 1 } } })
+    } catch (err) {
+      if (err.name !== 'JsonWebTokenError' && err.name !== 'TokenExpiredError' && err.name !== 'NotBeforeError')
+        console.error('logout tokenVersion update failed', err)
+    }
+  }
   res.clearCookie('token', COOKIE_OPTS).json({ ok: true })
 })
 

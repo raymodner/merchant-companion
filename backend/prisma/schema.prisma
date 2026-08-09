@@ -13,6 +13,7 @@ model User {
   password         String   @db.VarChar(255)
   preferredCountry String?  @map("preferred_country") @db.VarChar(100)
   preferredState   String?  @map("preferred_state") @db.VarChar(100)
+  tokenVersion     Int      @default(0) @map("token_version")
   createdAt        DateTime @default(now()) @map("created_at")
 
   cellPaints        CellPaint[]

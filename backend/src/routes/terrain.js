@@ -40,7 +40,7 @@ router.get('/:regionId', uuidParam('regionId'), async (req, res) => {
 
 const cellSchema = z.object({
   cellKey: z.string().regex(CELL_KEY_RE, { message: 'Invalid cellKey' }),
-  terrainKey: z.string().optional(),
+  terrainKey: z.string().nullish(),
 })
 
 router.post('/:regionId/cell',
@@ -62,57 +62,5 @@ router.post('/:regionId/cell',
     }
   }
 )
-
-const importSchema = z.object({
-  data: z.any()
-    .refine(v => typeof v === 'object' && v !== null && !Array.isArray(v), {
-      message: 'data must be an object',
-    })
-    .refine(v => Object.keys(v).length <= 50_000, {
-      message: 'Too many cells in import (max 50 000)',
-    }),
-})
-
-router.post('/:regionId/import',
-  auth,
-  uuidParam('regionId'),
-  body(importSchema),
-  async (req, res) => {
-    const { regionId } = req.params
-    const { data } = req.body
-    try {
-      const terrains = await prisma.terrain.findMany({ select: { id: true, name: true } })
-      const terrainMap = Object.fromEntries(terrains.map(terrain => [terrain.name, terrain.id]))
-      const records = []
-      for (const [cellKey, terrainKey] of Object.entries(data)) {
-        if (!terrainKey || !CELL_KEY_RE.test(cellKey)) continue
-        records.push({
-          regionId,
-          cellKey,
-          terrainId: terrainMap[terrainKey] ?? null,
-          userId: req.user.id,
-        })
-      }
-      await prisma.$transaction(async (tx) => {
-        await tx.cellPaint.deleteMany({ where: { regionId } })
-        if (records.length) await tx.cellPaint.createMany({ data: records })
-      })
-      res.json({ ok: true })
-    } catch (err) {
-      console.error(err)
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  }
-)
-
-router.delete('/:regionId', auth, uuidParam('regionId'), async (req, res) => {
-  try {
-    await prisma.cellPaint.deleteMany({ where: { regionId: req.params.regionId } })
-    res.json({ ok: true })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Internal server error' })
-  }
-})
 
 export default router

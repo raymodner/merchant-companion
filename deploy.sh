@@ -19,6 +19,23 @@ load_env() {
 }
 [ -f .env ] && load_env
 
+error=0
+for var in DB_PASSWORD JWT_SECRET; do
+  val="${!var:-}"
+  if [ -z "$val" ] || [ "$val" = "change_me" ]; then
+    echo "Error: $var is not configured in .env"
+    error=1
+  fi
+done
+for var in ALLOWED_ORIGINS APP_URL; do
+  val="${!var:-}"
+  if [ -z "$val" ]; then
+    echo "Error: $var is not configured in .env"
+    error=1
+  fi
+done
+[ "$error" -eq 1 ] && exit 1
+
 DB_CONTAINER="${DB_CONTAINER:-merchant-companion_db}"
 DB_USER="${DB_USER:-merchant-companion}"
 DB_NAME="${DB_NAME:-merchant-companion}"
