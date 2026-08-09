@@ -7,7 +7,7 @@ datasource db {
 }
 
 model User {
-  id               String   @id @default(uuid()) @db.Uuid
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username         String   @unique @db.VarChar(50)
   email            String   @unique @db.VarChar(255)
   password         String   @db.VarChar(255)
@@ -23,7 +23,7 @@ model User {
 }
 
 model CellPaint {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   cellKey   String   @map("cell_key") @db.VarChar(50)
   userId    String?  @map("user_id") @db.Uuid
   paintedAt DateTime @default(now()) @map("painted_at")
@@ -39,7 +39,7 @@ model CellPaint {
 }
 
 model ResourceType {
-  id   String @id @default(uuid()) @db.Uuid
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name String @unique @db.VarChar(30)
   tier Int    @default(1)
 
@@ -53,7 +53,7 @@ model ResourceType {
 }
 
 model Resource {
-  id             String  @id @default(uuid()) @db.Uuid
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String  @unique @db.VarChar(100)
   resourceTypeId String  @map("resource_type_id") @db.Uuid
   icon           String? @db.VarChar(20)
@@ -68,7 +68,7 @@ model Resource {
 }
 
 model Terrain {
-  id    String @id @default(uuid()) @db.Uuid
+  id    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name  String @unique @db.VarChar(50)
   color String @db.VarChar(20)
   icon  String @db.VarChar(10)
@@ -80,7 +80,7 @@ model Terrain {
 }
 
 model Location {
-  id        String @id @default(uuid()) @db.Uuid
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String @db.VarChar(100)
   terrainId String @map("terrain_id") @db.Uuid
 
@@ -92,7 +92,7 @@ model Location {
 }
 
 model ResourceLocation {
-  id         String @id @default(uuid()) @db.Uuid
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   resourceId String @map("resource_id") @db.Uuid
   locationId String @map("location_id") @db.Uuid
   stars      Int    @default(0) @db.SmallInt
@@ -105,7 +105,7 @@ model ResourceLocation {
 }
 
 model ProductionChain {
-  id                  String  @id @default(uuid()) @db.Uuid
+  id                  String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   resourceId          String  @unique @map("resource_id") @db.Uuid
   processedName       String  @map("processed_name") @db.VarChar(100)
   processedCategoryId String  @map("processed_category_id") @db.Uuid
@@ -123,7 +123,7 @@ model ProductionChain {
 }
 
 model MapRegion {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String   @db.VarChar(100)
   parentId  String?  @map("parent_id") @db.Uuid
   latMin    Decimal  @map("lat_min") @db.Decimal(7, 4)
@@ -144,7 +144,7 @@ model MapRegion {
 }
 
 model Tribe {
-  id    String @id @default(uuid()) @db.Uuid
+  id    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name  String @unique @db.VarChar(100)
   color String @db.VarChar(20)
   icon  String @db.VarChar(10)
@@ -155,7 +155,7 @@ model Tribe {
 }
 
 model TribeType {
-  id   String @id @default(uuid()) @db.Uuid
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name String @unique @db.VarChar(20)
 
   markers TribeMarker[]
@@ -164,7 +164,7 @@ model TribeType {
 }
 
 model TribeMarker {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   placedBy    String   @map("placed_by") @db.Uuid
   tribeId     String   @map("tribe_id") @db.Uuid
   tribeTypeId String   @map("tribe_type_id") @db.Uuid
@@ -183,7 +183,7 @@ model TribeMarker {
 }
 
 model SettlementStage {
-  id           String @id @default(uuid()) @db.Uuid
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name         String @unique @db.VarChar(100)
   sortOrder    Int    @default(0) @map("sort_order")
   tier         Int    @default(1) @db.SmallInt
@@ -197,7 +197,7 @@ model SettlementStage {
 }
 
 model PlayerSettlement {
-  id             String   @id @default(uuid()) @db.Uuid
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId         String   @map("user_id") @db.Uuid
   stageId        String   @map("stage_id") @db.Uuid
   regionId       String   @map("region_id") @db.Uuid

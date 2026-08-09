@@ -63,29 +63,24 @@ Creates `.env` from `.env.dist` if it doesn't exist, guides you through required
 ```bash
 bash deploy.sh
 ```
-Pulls latest changes, rebuilds containers, and restarts. Pending migrations apply automatically on API startup.
+Pulls latest changes, rebuilds containers, applies any schema changes, and re-seeds game data. All idempotent — safe to run repeatedly.
 
 The production compose builds the Vue app and serves it through nginx on port 8080. The API is not exposed directly; nginx reverse-proxies it.
 
-### Database migrations
+### Schema changes
 
-Schema is managed with Prisma Migrate. Migrations live in `backend/prisma/migrations/` and are applied automatically when the API container starts (`prisma migrate deploy` runs before the server).
+Schema is managed with Prisma Migrate. Migration files live in `backend/prisma/migrations/` and are applied automatically when `bash deploy.sh` runs.
 
-**Create a migration** (after editing `backend/prisma/schema.prisma`):
+**To make a schema change** (run on your dev machine, not the server):
 ```bash
-docker exec merchant-companion_api pnpm prisma:migrate
-# prompts for a migration name, generates SQL, applies it, regenerates the client
+# 1. Edit backend/prisma/schema.prisma
+# 2. Generate, apply, and copy the migration files to the host
+bash migrate.sh describe_your_change
+# 3. Commit the generated migration file
+git add backend/prisma/migrations/ && git commit -m "migration: describe_your_change"
 ```
 
-**Apply pending migrations manually** (e.g. on the production server after `git pull`):
-```bash
-docker exec merchant-companion_api pnpm prisma:deploy
-```
-
-**Fresh database setup** — schema is created by migrations on first API start. Seed game data manually after:
-```bash
-docker exec -i merchant-companion_db psql -U merchant-companion -d merchant-companion < seed.sql
-```
+`bash deploy.sh` on the server will pick it up and apply it.
 
 ## Architecture
 

@@ -16,8 +16,8 @@ if [ ! -f .env ]; then
   echo "Created .env from .env.dist."
   echo ""
   echo "Fill in the required values before continuing:"
-  echo "  DB_PASSWORD   — database password"
-  echo "  JWT_SECRET    — run: openssl rand -hex 64"
+  echo "  DB_PASSWORD     — database password"
+  echo "  JWT_SECRET      — run: openssl rand -hex 64"
   echo "  ALLOWED_ORIGINS — e.g. https://yourdomain.com"
   echo "  APP_URL         — e.g. https://yourdomain.com"
   echo ""
@@ -25,7 +25,20 @@ if [ ! -f .env ]; then
   exit 0
 fi
 
-set -a; source .env; set +a
+load_env() {
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    line="${line%%[[:space:]]#*}"
+    [[ "$line" == *=* ]] || continue
+    local key="${line%%=*}"
+    local val="${line#*=}"
+    if [[ "$val" == '"'*'"' ]]; then val="${val:1:${#val}-2}"
+    elif [[ "$val" == "'"*"'" ]]; then val="${val:1:${#val}-2}"; fi
+    export "$key=$val"
+  done < .env
+}
+load_env
 
 error=0
 for var in DB_PASSWORD JWT_SECRET; do
@@ -47,26 +60,31 @@ done
 DB_CONTAINER="${DB_CONTAINER:-merchant-companion_db}"
 DB_USER="${DB_USER:-merchant-companion}"
 DB_NAME="${DB_NAME:-merchant-companion}"
+API_CONTAINER="${API_CONTAINER:-merchant-companion_api}"
 
 # ── Build and start ───────────────────────────────────────────────────────────
 
 echo "Building and starting containers..."
 docker compose -f docker-compose.prod.yml up --build -d
 
-# ── Wait for DB ───────────────────────────────────────────────────────────────
+# ── Wait for database ─────────────────────────────────────────────────────────
 
 echo "Waiting for database..."
 until docker exec "$DB_CONTAINER" pg_isready -U "$DB_USER" -q 2>/dev/null; do
   sleep 1
 done
 
-# ── Wait for migrations (API runs prisma migrate deploy on startup) ────────────
+# ── Wait for API container ────────────────────────────────────────────────────
 
-echo "Waiting for migrations..."
-until docker exec "$DB_CONTAINER" \
-  psql -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1 FROM _prisma_migrations LIMIT 1" >/dev/null 2>&1; do
-  sleep 2
+echo "Waiting for API..."
+until docker exec "$API_CONTAINER" true 2>/dev/null; do
+  sleep 1
 done
+
+# ── Apply schema via migrations ───────────────────────────────────────────────
+
+echo "Applying migrations..."
+docker exec "$API_CONTAINER" pnpm prisma:deploy
 
 # ── Seed game data ────────────────────────────────────────────────────────────
 
