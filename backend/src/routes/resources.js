@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../prisma.js'
 import { auth } from '../auth.js'
 import { body, uuidParam } from '../lib/validate.js'
+import { config } from '../lib/config.js'
 
 const router = Router()
 
@@ -68,6 +69,7 @@ router.patch('/resource-locations/:id',
   uuidParam('id'),
   body(patchResourceLocationSchema),
   async (req, res) => {
+    if (!config.starEditing) return res.status(403).json({ error: 'Star editing is disabled' })
     try {
       await prisma.resourceLocation.update({
         where: { id: req.params.id },

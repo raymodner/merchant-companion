@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken'
 import { prisma } from './prisma.js'
 
-if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set')
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)
+  throw new Error('JWT_SECRET must be at least 32 characters')
 const secret = process.env.JWT_SECRET
 
 export async function auth(req, res, next) {

@@ -63,7 +63,7 @@ router.post('/register', authLimiter, body(registerSchema), async (req, res) => 
 
   try {
     const hash = await bcrypt.hash(password, 12)
-    const user = await prisma.user.create({ data: { username, email, password: hash } })
+    const user = await prisma.user.create({ data: { username, email: email.toLowerCase(), password: hash } })
     res.cookie('token', signToken(user), COOKIE_OPTS).json({ user: toPublicUser(user) })
   } catch (err) {
     if (err.code === 'P2002') return res.status(409).json({ error: 'Username or email already taken' })
@@ -82,7 +82,7 @@ const loginSchema = z.object({
 router.post('/login', authLimiter, body(loginSchema), async (req, res) => {
   const { email, password } = req.body
   try {
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
     const valid = await bcrypt.compare(password, user?.password ?? DUMMY_HASH)
     if (!user || !valid) return res.status(401).json({ error: 'Invalid credentials' })
     res.cookie('token', signToken(user), COOKIE_OPTS).json({ user: toPublicUser(user) })

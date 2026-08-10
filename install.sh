@@ -13,6 +13,7 @@ docker compose version >/dev/null 2>&1 || { echo "Error: Docker Compose plugin i
 
 if [ ! -f .env ]; then
   cp .env.dist .env
+  chmod 600 .env
   echo "Created .env from .env.dist."
   echo ""
   echo "Fill in the required values before continuing:"

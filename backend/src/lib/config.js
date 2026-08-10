@@ -1,3 +1,11 @@
+function requireInt(name, fallback) {
+  const raw = process.env[name]
+  if (raw == null || raw === '') return fallback
+  const v = parseInt(raw, 10)
+  if (!Number.isFinite(v) || v < 1) throw new Error(`${name} must be a positive integer (got: "${raw}")`)
+  return v
+}
+
 const _allowlistRaw = (process.env.REGISTRATION_ALLOWLIST ?? '').trim()
 const registrationAllowlist = _allowlistRaw
   ? new Set(_allowlistRaw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean))
@@ -6,9 +14,9 @@ const registrationAllowlist = _allowlistRaw
 const registrationOpen = (process.env.REGISTRATION_OPEN ?? 'true') !== 'false'
 
 export const config = {
-  maxTribeMarkers:      parseInt(process.env.MAX_TRIBE_MARKERS      ?? '50', 10),
-  maxSettlements:       parseInt(process.env.MAX_SETTLEMENTS         ?? '50', 10),
-  maxPublicSettlements: parseInt(process.env.MAX_PUBLIC_SETTLEMENTS  ?? '10', 10),
+  maxTribeMarkers:      requireInt('MAX_TRIBE_MARKERS',      50),
+  maxSettlements:       requireInt('MAX_SETTLEMENTS',        50),
+  maxPublicSettlements: requireInt('MAX_PUBLIC_SETTLEMENTS', 10),
   starEditing:                  (process.env.STAR_EDITING                   ?? 'true') !== 'false',
   publicSettlementsRequireAuth: (process.env.PUBLIC_SETTLEMENTS_REQUIRE_AUTH ?? 'false') !== 'false',
   registrationOpen,

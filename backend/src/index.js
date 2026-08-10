@@ -21,7 +21,7 @@ const ALLOWED_ORIGINS = new Set(
 
 const app = express()
 
-app.set('trust proxy', 1)
+if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1)
 app.use(helmet())
 app.use(cors({
   origin: (origin, cb) =>
@@ -49,10 +49,10 @@ const writeLimiter = rateLimit({
   skip: (req) => req.method === 'GET' || req.method === 'HEAD',
 })
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }))
-
 app.use('/api', readLimiter)
 app.use('/api', writeLimiter)
+
+app.get('/api/health', (_req, res) => res.json({ ok: true }))
 app.use('/api',              configRoutes)
 app.use('/api/auth',         authRoutes)
 app.use('/api',              lookupRoutes)

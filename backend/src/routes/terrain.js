@@ -9,6 +9,10 @@ const router = Router()
 
 // Cell keys look like "52.5,13.5" — one decimal place each
 const CELL_KEY_RE = /^-?\d{1,3}\.\d,-?\d{1,4}\.\d$/
+const isBounded = (key) => {
+  const [lat, lng] = key.split(',').map(Number)
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+}
 
 // GET uses raw SQL with DISTINCT ON to get the latest paint per cell.
 // Prisma cannot express DISTINCT ON without loading all rows and filtering in JS,
@@ -39,7 +43,8 @@ router.get('/:regionId', uuidParam('regionId'), async (req, res) => {
 })
 
 const cellSchema = z.object({
-  cellKey: z.string().regex(CELL_KEY_RE, { message: 'Invalid cellKey' }),
+  cellKey: z.string().regex(CELL_KEY_RE, { message: 'Invalid cellKey' })
+    .refine(isBounded, { message: 'Cell coordinates out of bounds' }),
   terrainKey: z.string().max(50).nullish(),
 })
 
@@ -51,12 +56,15 @@ router.post('/:regionId/cell',
     const { regionId } = req.params
     const { cellKey, terrainKey } = req.body
     try {
+      const region = await prisma.mapRegion.findUnique({ where: { id: regionId }, select: { id: true } })
+      if (!region) return res.status(400).json({ error: 'Region not found' })
       const terrainId = await resolveTerrain(terrainKey)
       await prisma.cellPaint.create({
         data: { regionId, cellKey, terrainId, userId: req.user.id },
       })
       res.json({ ok: true })
     } catch (err) {
+      if (err.code === 'P2003') return res.status(400).json({ error: 'Invalid reference' })
       console.error(err)
       res.status(500).json({ error: 'Internal server error' })
     }

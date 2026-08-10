@@ -23,15 +23,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
-  <script>
-    (function() {
-      var t = localStorage.getItem('color-theme');
-      if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      document.documentElement.dataset.theme = t;
-      var tc = document.querySelector('meta[name="theme-color"]');
-      if (tc) tc.content = t === 'light' ? '#f5ead0' : '#0d0702';
-    })();
-  </script>
+  <script src="/theme-init.js"></script>
 </head>
 <body>
   <div id="app"></div>

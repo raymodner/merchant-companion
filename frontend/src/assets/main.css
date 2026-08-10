@@ -497,6 +497,7 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; backgrou
   letter-spacing: 0.08em;
   text-align: center;
   border: 1px solid transparent;
+  outline: none;
   user-select: none;
   transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
@@ -510,6 +511,13 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; backgrou
 .paint-mode-btn { color: #5a7a3a; border-color: #3a5a28; background: rgba(90,122,58,0.08); margin-bottom: 0; }
 .paint-mode-btn:hover { color: #8aba58; border-color: #5a8a38; }
 .paint-mode-btn.active { color: #a8d870; border-color: #8aba58; background: rgba(140,186,88,0.15); }
+
+:root[data-theme="light"] .paint-mode-btn,
+:root:not([data-theme="dark"]) .paint-mode-btn { color: #3a5a28; border-color: #4a6a38; background: rgba(90,122,58,0.08); }
+:root[data-theme="light"] .paint-mode-btn:hover,
+:root:not([data-theme="dark"]) .paint-mode-btn:hover { color: #2a4a1a; border-color: #3a5a28; }
+:root[data-theme="light"] .paint-mode-btn.active,
+:root:not([data-theme="dark"]) .paint-mode-btn.active { color: #2a4a1a; border-color: #3a6a20; background: rgba(90,140,50,0.14); }
 
 #map.paint-cursor { cursor: crosshair; }
 
@@ -972,6 +980,13 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; backgrou
 .settle-place-btn:hover { color: #5aaa8a; border-color: #3a7a5a; }
 .settle-place-btn.active { color: #6acaaa; border-color: #5aaa8a; background: rgba(90,170,138,0.14); }
 
+:root[data-theme="light"] .settle-place-btn,
+:root:not([data-theme="dark"]) .settle-place-btn { color: #2a5a48; border-color: #3a6a58; background: rgba(58,106,90,0.08); }
+:root[data-theme="light"] .settle-place-btn:hover,
+:root:not([data-theme="dark"]) .settle-place-btn:hover { color: #1a4a38; border-color: #2a5a48; }
+:root[data-theme="light"] .settle-place-btn.active,
+:root:not([data-theme="dark"]) .settle-place-btn.active { color: #1a4a38; border-color: #2a6a50; background: rgba(50,130,100,0.14); }
+
 .settle-empty {
   font-family: 'Crimson Text', serif;
   font-style: italic;
@@ -1075,6 +1090,13 @@ html, body { height: 100%; font-family: 'Crimson Text', Georgia, serif; backgrou
 }
 .tribe-place-btn:hover { color: #8aaa5a; border-color: #5a7a38; }
 .tribe-place-btn.active { color: #aad87a; border-color: #8aaa5a; background: rgba(138,170,90,0.15); }
+
+:root[data-theme="light"] .tribe-place-btn,
+:root:not([data-theme="dark"]) .tribe-place-btn { color: #3a4a28; border-color: #4a5a38; background: rgba(90,106,58,0.08); }
+:root[data-theme="light"] .tribe-place-btn:hover,
+:root:not([data-theme="dark"]) .tribe-place-btn:hover { color: #2a3a18; border-color: #3a4a28; }
+:root[data-theme="light"] .tribe-place-btn.active,
+:root:not([data-theme="dark"]) .tribe-place-btn.active { color: #2a3a18; border-color: #4a6a28; background: rgba(100,140,60,0.15); }
 
 /* ── Alternative placement (location) ──────────────────────────── */
 .place-alt {
