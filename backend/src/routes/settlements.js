@@ -18,7 +18,7 @@ router.get('/player-settlements/:regionId', optionalAuth, uuidParam('regionId'),
         regionId,
         OR: userId ? [{ isPublic: true }, { userId }] : [{ isPublic: true }],
       },
-      include: { user: true, stage: true, resourceTypeRef: true },
+      include: { user: { select: { username: true } }, stage: true, resourceTypeRef: true },
       orderBy: { createdAt: 'asc' },
     })
     res.json({
@@ -92,7 +92,7 @@ router.post('/player-settlements', auth, body(postSettlementSchema), async (req,
           name: name || null,
           isPublic: is_public === true,
         },
-        include: { user: true, stage: true, resourceTypeRef: true },
+        include: { user: { select: { username: true } }, stage: true, resourceTypeRef: true },
       })
     }, { isolationLevel: 'Serializable' })
 
@@ -136,6 +136,10 @@ router.patch('/player-settlements/:id', auth, uuidParam('id'), body(patchSettlem
       if (!stage) return res.status(400).json({ error: 'Invalid stage_id' })
     }
 
+    if (resource_type != null) {
+      const rt = await prisma.resourceType.findUnique({ where: { name: resource_type }, select: { id: true } })
+      if (!rt) return res.status(400).json({ error: 'Invalid resource_type' })
+    }
     const resourceTypeId = resource_type !== undefined ? await resolveResourceType(resource_type) : undefined
 
     // Public-limit check and update in a single serializable transaction (mirrors POST)

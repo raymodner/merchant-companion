@@ -13,7 +13,7 @@ router.get('/tribe-markers/:regionId', auth, uuidParam('regionId'), async (req, 
   try {
     const rows = await prisma.tribeMarker.findMany({
       where: { regionId, placedBy: req.user.id },
-      include: { user: true, tribe: true, tribeType: true },
+      include: { user: { select: { username: true } }, tribe: true, tribeType: true },
       orderBy: { createdAt: 'asc' },
     })
     res.json({
@@ -64,7 +64,7 @@ router.post('/tribe-markers', auth, body(postTribeMarkerSchema), async (req, res
 
       return tx.tribeMarker.create({
         data: { placedBy: req.user.id, tribeId: tribe_id, tribeTypeId, regionId: region_id, lat: latVal, lng: lngVal },
-        include: { user: true, tribe: true, tribeType: true },
+        include: { user: { select: { username: true } }, tribe: true, tribeType: true },
       })
     }, { isolationLevel: 'Serializable' })
 

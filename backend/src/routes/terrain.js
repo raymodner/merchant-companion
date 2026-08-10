@@ -40,7 +40,7 @@ router.get('/:regionId', uuidParam('regionId'), async (req, res) => {
 
 const cellSchema = z.object({
   cellKey: z.string().regex(CELL_KEY_RE, { message: 'Invalid cellKey' }),
-  terrainKey: z.string().nullish(),
+  terrainKey: z.string().max(50).nullish(),
 })
 
 router.post('/:regionId/cell',

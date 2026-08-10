@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken' // used for jwt.decode in logout
+import jwt from 'jsonwebtoken'
 import rateLimit from 'express-rate-limit'
 import { prisma } from '../prisma.js'
 import { auth, signToken } from '../auth.js'
@@ -151,7 +151,7 @@ router.patch('/password', authLimiter, auth, body(changePasswordSchema), async (
   }
 })
 
-router.post('/logout', authLimiter, async (req, res) => {
+router.post('/logout', async (req, res) => {
   const token = req.cookies?.token
   if (token) {
     try {
