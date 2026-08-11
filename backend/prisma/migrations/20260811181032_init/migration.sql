@@ -118,6 +118,13 @@ CREATE TABLE "map_regions" (
     CONSTRAINT "map_regions_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateIndex
+-- Expression index (COALESCE over a nullable FK) — not expressible in schema.prisma,
+-- so it won't show up if this migration is ever regenerated from the Prisma schema.
+-- Must stay in sync with setup.sql's map_regions_name_parent_id_key by hand.
+CREATE UNIQUE INDEX "map_regions_name_parent_id_key"
+  ON "map_regions" ("name", COALESCE("parent_id", '00000000-0000-0000-0000-000000000000'::uuid));
+
 -- CreateTable
 CREATE TABLE "tribes" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
