@@ -25,6 +25,8 @@ services:
       dockerfile: Dockerfile
     container_name: merchant-companion_api
     restart: always
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       PORT: 3001
