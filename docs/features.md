@@ -1,6 +1,6 @@
 # Features
 
-Merchant Companion is a shared map tool for Merchants of the Dark Road. All users see the same map — terrain painted by one person is visible to everyone in that region, and public settlements are shared across players.
+Merchant Companion is a shared map tool for Merchants of the Dark Road. By default, all users see the same map — terrain painted by one person is visible to everyone in that region, and public settlements are shared across players. Terrain paint, tribe marker visibility, and star ratings can each be switched between shared and private-per-user by the server operator — see [Installation](installation.md#configuration).
 
 ---
 
@@ -22,7 +22,7 @@ Available terrain types: Arid, Cold, Desert, Flat, Hill, Mountain, Tropical, Wet
 
 Use the **Eraser** to remove paint from a cell.
 
-Painted terrain is visible to all users in that region.
+Painted terrain is visible to all users in that region (unless the server is configured for private-per-user paint).
 
 ---
 
@@ -41,7 +41,7 @@ Track where tribes are located on the map.
 **Editing or deleting a marker:**
 Click any of your markers on the map to open a popup with Edit and Delete options.
 
-Each account can place up to 50 tribe markers. Tribe markers are private — only you see them.
+Each account can place up to 50 tribe markers. Tribe markers are private by default — only you see them — unless the server is configured to make them visible to everyone. You can only edit or delete your own markers either way.
 
 ---
 
@@ -98,7 +98,7 @@ Click the resource icon in the sidebar to open the Resource Lookup modal.
 Each resource shows its production chain (raw → processed → final products) and a list of terrain types and specific locations where it can be found, grouped by terrain.
 
 **Star ratings:**
-Locations can be rated 1–5 stars by the community. A rating of 0 means unknown. Log in and click **Edit Ratings** to contribute ratings. Ratings are shared across all users.
+Locations can be rated 1–5 stars by the community. A rating of 0 means unknown. Log in and click **Edit Ratings** to contribute ratings. By default ratings are shared across all users (the latest submission wins); the server can instead be configured so each user only sees their own rating.
 
 ---
 

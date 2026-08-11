@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
@@ -69,9 +72,20 @@ CREATE TABLE "resource_locations" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "resource_id" UUID NOT NULL,
     "location_id" UUID NOT NULL,
-    "stars" SMALLINT NOT NULL DEFAULT 0,
 
     CONSTRAINT "resource_locations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "resource_ratings" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "resource_location_id" UUID NOT NULL,
+    "user_id" UUID,
+    "stars" SMALLINT NOT NULL,
+    "rated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "resource_ratings_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "resource_ratings_stars_check" CHECK ("stars" BETWEEN 0 AND 5)
 );
 
 -- CreateTable
@@ -118,6 +132,7 @@ CREATE TABLE "tribes" (
 CREATE TABLE "tribe_types" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "name" VARCHAR(20) NOT NULL,
+    "sort_order" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "tribe_types_pkey" PRIMARY KEY ("id")
 );
@@ -190,6 +205,9 @@ CREATE UNIQUE INDEX "locations_name_terrain_id_key" ON "locations"("name", "terr
 CREATE UNIQUE INDEX "resource_locations_resource_id_location_id_key" ON "resource_locations"("resource_id", "location_id");
 
 -- CreateIndex
+CREATE INDEX "resource_ratings_lookup" ON "resource_ratings"("resource_location_id", "rated_at" DESC);
+
+-- CreateIndex
 CREATE UNIQUE INDEX "production_chain_resource_id_key" ON "production_chain"("resource_id");
 
 -- CreateIndex
@@ -227,6 +245,12 @@ ALTER TABLE "resource_locations" ADD CONSTRAINT "resource_locations_resource_id_
 
 -- AddForeignKey
 ALTER TABLE "resource_locations" ADD CONSTRAINT "resource_locations_location_id_fkey" FOREIGN KEY ("location_id") REFERENCES "locations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "resource_ratings" ADD CONSTRAINT "resource_ratings_resource_location_id_fkey" FOREIGN KEY ("resource_location_id") REFERENCES "resource_locations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "resource_ratings" ADD CONSTRAINT "resource_ratings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "production_chain" ADD CONSTRAINT "production_chain_resource_id_fkey" FOREIGN KEY ("resource_id") REFERENCES "resources"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -267,6 +291,3 @@ ALTER TABLE "player_settlements" ADD CONSTRAINT "player_settlements_region_id_fk
 -- AddForeignKey
 ALTER TABLE "player_settlements" ADD CONSTRAINT "player_settlements_resource_type_id_fkey" FOREIGN KEY ("resource_type_id") REFERENCES "resource_types"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- Expression unique index for map_regions upserts (COALESCE handles NULL parent_id)
-CREATE UNIQUE INDEX "map_regions_name_parent_uidx"
-  ON "map_regions" ("name", COALESCE("parent_id", '00000000-0000-0000-0000-000000000000'::uuid));

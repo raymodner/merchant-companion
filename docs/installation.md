@@ -22,8 +22,10 @@ bash install.sh
 ```
 
 `install.sh` will:
-1. Copy `.env.dist` to `.env` and ask you to fill in the required values, then exit
-2. On the second run, build all containers, wait for the database, apply migrations, and seed game data
+1. Copy `.env.dist` to `.env` and walk you through the required (and optional) values
+2. Build all containers, wait for the database, apply migrations, and seed game data — all in the same run
+
+If `.env` already exists, it'll ask whether to reconfigure it or keep it as-is before continuing.
 
 The app is available on port **8080**. Put nginx or Caddy in front to handle TLS.
 
