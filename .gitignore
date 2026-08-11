@@ -1,0 +1,8 @@
+node_modules
+.pnpm-store
+dist
+.env
+.claude
+CLAUDE.md
+*.sql.bak
+backup.sql

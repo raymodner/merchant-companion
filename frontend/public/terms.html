@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service – Merchant Community Map</title>
+  <style>
+    :root {
+      --c-bg: #0d0702;
+      --c-surface: #1a0d04;
+      --c-border: #3a2810;
+      --c-text: #e8d5a8;
+      --c-text-2: #d4b87a;
+      --c-text-3: #7a5a28;
+      --c-accent: #c9973a;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --c-bg: #f5ead0;
+        --c-surface: #ece0c2;
+        --c-border: #b89060;
+        --c-text: #281808;
+        --c-text-2: #5c3a18;
+        --c-text-3: #8a6030;
+        --c-accent: #9a7020;
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--c-bg);
+      color: var(--c-text);
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1rem;
+      line-height: 1.7;
+      padding: 40px 16px 80px;
+    }
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .back {
+      display: inline-block;
+      color: var(--c-accent);
+      text-decoration: none;
+      font-family: system-ui, sans-serif;
+      font-size: 0.85rem;
+      margin-bottom: 32px;
+      letter-spacing: 0.03em;
+    }
+    .back:hover { text-decoration: underline; }
+    h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--c-accent);
+      letter-spacing: 0.02em;
+      margin-bottom: 6px;
+    }
+    .updated {
+      color: var(--c-text-3);
+      font-family: system-ui, sans-serif;
+      font-size: 0.82rem;
+      margin-bottom: 36px;
+    }
+    h2 {
+      font-size: 1.1rem;
+      color: var(--c-text-2);
+      margin-top: 36px;
+      margin-bottom: 10px;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid var(--c-border);
+      padding-bottom: 6px;
+    }
+    p { margin-bottom: 14px; }
+    ul { padding-left: 20px; margin-bottom: 14px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--c-accent); }
+    a:hover { text-decoration: underline; }
+    .footer {
+      margin-top: 56px;
+      padding-top: 20px;
+      border-top: 1px solid var(--c-border);
+      color: var(--c-text-3);
+      font-family: system-ui, sans-serif;
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <a class="back" href="/">← Back to map</a>
+
+    <h1>Terms of Service</h1>
+    <p class="updated">Last updated: July 2026</p>
+
+    <p>By creating an account or using Merchant Community Map (the "Service"), you agree to these terms. The Service is operated by <span id="operator-name"></span> ("we", "us").</p>
+
+    <h2>The Service</h2>
+    <p>Merchant Community Map is a community-maintained map tool for tracking in-game terrain, settlements, and resources. It is not affiliated with, endorsed by, or operated by any game developer or publisher. Game data is contributed by the community and may be incomplete or outdated.</p>
+
+    <h2>Your account</h2>
+    <p>You are responsible for keeping your login credentials secure and for all activity that occurs under your account. You must be at least 13 years old to create an account.</p>
+
+    <h2>User content</h2>
+    <p>You retain ownership of map content you create (markers, terrain paints, settlement data). By posting content you grant us a non-exclusive licence to store and display it as part of the Service. You are solely responsible for the content you contribute. We may remove any content that violates these terms or is reported as abusive.</p>
+
+    <h2>Prohibited uses</h2>
+    <p>You may not use the Service to:</p>
+    <ul>
+      <li>Scrape, crawl, or bulk-download data through automated means.</li>
+      <li>Harass, impersonate, or harm other users.</li>
+      <li>Attempt to gain unauthorised access to the Service or other users' accounts.</li>
+      <li>Submit false, misleading, or deliberately inaccurate map data with intent to deceive.</li>
+      <li>Use the Service for any commercial purpose without prior written consent.</li>
+    </ul>
+
+    <h2>Availability and accuracy</h2>
+    <p>We provide the Service on an "as-is" basis with no guarantees of uptime, accuracy, or completeness. Map data is community-contributed and may not reflect current in-game conditions. We are not liable for decisions made based on information found here.</p>
+
+    <h2>Account termination</h2>
+    <p>We may suspend or terminate your account at our discretion if you violate these terms or misuse the Service. You may request deletion of your account via our <a id="contact-link-inline" href="#" target="_blank" rel="noopener">Discord server</a>.</p>
+
+    <h2>Changes to these terms</h2>
+    <p>We may update these terms from time to time. We will update the date above when we do. Continued use of the Service after changes constitutes acceptance of the revised terms.</p>
+
+    <h2>Governing law</h2>
+    <p>These terms are governed by the laws of the Netherlands. Any disputes will be subject to the exclusive jurisdiction of the courts of the Netherlands.</p>
+
+    <h2>Contact</h2>
+    <p id="contact-name-line"></p>
+    <div id="contact-links"></div>
+
+    <div class="footer">
+      Merchant Community Map &nbsp;·&nbsp; <a href="/privacy.html">Privacy Policy</a>
+    </div>
+  </div>
+  <script>
+    fetch('/api/config').then(r => r.json()).then(cfg => {
+      const c = cfg.contact || {}
+      if (c.name) {
+        document.getElementById('operator-name').textContent = c.name
+        document.getElementById('contact-name-line').textContent = 'Operated by ' + c.name + '.'
+      }
+      if (c.discord) document.getElementById('contact-link-inline').href = c.discord
+      const links = []
+      if (c.discord) links.push('<a href="' + c.discord + '" target="_blank" rel="noopener">Join our Discord server</a>')
+      if (c.email)   links.push('<a href="mailto:' + c.email + '">' + c.email + '</a>')
+      document.getElementById('contact-links').innerHTML = links.map(l => '<p>' + l + '</p>').join('')
+    }).catch(() => {})
+  </script>
+</body>
+</html>
