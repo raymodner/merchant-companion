@@ -55,6 +55,9 @@ services:
     restart: unless-stopped
     environment:
       API_URL: http://api:3001
+      VITE_TILE_URL: ${TILE_URL:-}
+      VITE_TILE_API_KEY: ${TILE_API_KEY:-}
+      VITE_TILE_ATTRIBUTION: ${TILE_ATTRIBUTION:-}
     ports:
       - '127.0.0.1:5174:5173'
     depends_on:

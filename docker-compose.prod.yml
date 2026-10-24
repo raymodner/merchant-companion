@@ -45,6 +45,9 @@ services:
       target: prod
       args:
         VITE_APP_URL: ${APP_URL}
+        VITE_TILE_URL: ${TILE_URL:-}
+        VITE_TILE_API_KEY: ${TILE_API_KEY:-}
+        VITE_TILE_ATTRIBUTION: ${TILE_ATTRIBUTION:-}
     container_name: merchant-companion_frontend
     restart: always
     ports:
