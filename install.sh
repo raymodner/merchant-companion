@@ -239,22 +239,26 @@ until docker exec "$API_CONTAINER" true 2>/dev/null; do
   sleep 1
 done
 
-# ── Baseline existing setup.sql databases (no migration history) ───────────────
+# ── Baseline existing setup.sql databases ─────────────────────────────────────
 # A pre-existing postgres volume (e.g. from the dev setup, which bootstraps with
-# setup.sql) already has the tables but no _prisma_migrations, so the init
-# migration would fail with "relation already exists". Mark it applied instead.
+# setup.sql) already has the tables, so the init migration would fail with
+# "relation already exists". Mark it applied instead — both when there's no
+# migration history yet, and when an earlier run already recorded the init
+# migration as failed (P3009).
 
-if ! docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
-     -c "SELECT 1 FROM _prisma_migrations LIMIT 1" >/dev/null 2>&1; then
-  TABLE_COUNT=$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -tAc \
-    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'" \
-    2>/dev/null | tr -d ' \n' || echo 0)
-  if [ "${TABLE_COUNT:-0}" -gt "0" ]; then
+psql_q() { docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -tAc "$1" 2>/dev/null | tr -d ' \n'; }
+
+FIRST=$(docker exec "$API_CONTAINER" ls /app/prisma/migrations/ 2>/dev/null | grep -v '\.toml$' | sort | head -1 || true)
+HAS_USERS=$(psql_q "SELECT to_regclass('public.users') IS NOT NULL" || echo f)
+if [ -n "$FIRST" ] && [ "$HAS_USERS" = "t" ]; then
+  HAS_HISTORY=$(psql_q "SELECT to_regclass('public._prisma_migrations') IS NOT NULL" || echo f)
+  if [ "$HAS_HISTORY" != "t" ]; then
     echo "Existing database found — baselining migration history..."
-    FIRST=$(docker exec "$API_CONTAINER" ls /app/prisma/migrations/ 2>/dev/null | grep -v '\.toml$' | sort | head -1 || true)
-    if [ -n "$FIRST" ]; then
-      docker exec "$API_CONTAINER" pnpm exec prisma migrate resolve --applied "$FIRST"
-    fi
+    docker exec "$API_CONTAINER" pnpm exec prisma migrate resolve --applied "$FIRST"
+  elif [ "$(psql_q "SELECT count(*) FROM _prisma_migrations WHERE migration_name = '$FIRST' AND finished_at IS NULL AND rolled_back_at IS NULL")" -gt 0 ] \
+    && [ "$(psql_q "SELECT count(*) FROM _prisma_migrations WHERE migration_name = '$FIRST' AND finished_at IS NOT NULL")" -eq 0 ]; then
+    echo "Init migration previously failed against an existing database — marking it applied..."
+    docker exec "$API_CONTAINER" pnpm exec prisma migrate resolve --applied "$FIRST"
   fi
 fi
 
