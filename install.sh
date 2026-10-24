@@ -54,6 +54,19 @@ write_env() {
   fi
 }
 
+ask_tile_key() {
+  echo "  The default map tiles (CARTO) need a free API key — without one every tile"
+  echo "  shows \"API KEY REQUIRED\". Get one at https://carto.com/basemaps/apikey"
+  echo "  (emailed straight back, no account needed). Press Enter to skip for now."
+  local key
+  key=$(ask "CARTO API key" "")
+  if [ -n "$key" ]; then
+    write_env "TILE_API_KEY" "$key"
+  else
+    echo "  Skipped. Set TILE_API_KEY in .env later and run: bash deploy.sh"
+  fi
+}
+
 # ── Existing .env ──────────────────────────────────────────────────────────────
 
 if [ -f .env ]; then
@@ -106,6 +119,11 @@ if [ ! -f .env ]; then
   JWT_SECRET=$(openssl rand -hex 64 2>/dev/null || cat /dev/urandom | tr -dc 'a-f0-9' | head -c 128)
   write_env "JWT_SECRET" "$JWT_SECRET"
   echo "  JWT secret auto-generated."
+
+  # Map tiles
+  echo ""
+  echo "── Map tiles ────────────────────────────"
+  ask_tile_key
 
   # Registration
   echo ""
@@ -178,6 +196,14 @@ load_env() {
   done < .env
 }
 load_env
+
+# Existing installs from before tile keys were required: offer to add one
+if [ -z "${TILE_API_KEY:-}" ] && [ -z "${TILE_URL:-}" ]; then
+  echo "── Map tiles ────────────────────────────"
+  ask_tile_key
+  echo ""
+  load_env
+fi
 
 error=0
 for var in DB_PASSWORD JWT_SECRET ALLOWED_ORIGINS APP_URL; do
