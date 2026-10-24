@@ -167,6 +167,37 @@ All options go in `.env` (root, for Docker) or `backend/.env` (for non-Docker).
 | `CONTACT_DISCORD` | — | Discord invite URL, shown in the privacy policy |
 | `CONTACT_EMAIL` | — | Contact email, shown in the privacy policy |
 
+### Map tiles
+
+By default the map uses CARTO's Voyager tiles, which need no key. To use a different provider (or one that requires an API key), set these in the root `.env`:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `TILE_URL` | CARTO Voyager | Leaflet tile URL template. Put `{apikey}` where the provider expects the key |
+| `TILE_API_KEY` | — | Substituted into `{apikey}` in `TILE_URL` |
+| `TILE_ATTRIBUTION` | `© OpenStreetMap contributors · © CartoDB` | Attribution shown in the map corner — most providers require it |
+
+These are baked into the frontend at **build time**, so rebuild after changing them: `bash deploy.sh` in production, or `docker compose up --build -d frontend` in development. Without Docker, export them as `VITE_TILE_URL`, `VITE_TILE_API_KEY` and `VITE_TILE_ATTRIBUTION` before `pnpm build` / `pnpm dev`.
+
+The key ends up in the public JavaScript bundle — that's normal for tile keys. Protect it by restricting it to your domain in the provider's dashboard.
+
+**Getting a key**
+
+- **MapTiler** — sign up at [cloud.maptiler.com](https://cloud.maptiler.com/), copy the default key under **API keys**, and add your domain under the key's **Allowed HTTP origins**.
+  ```env
+  TILE_URL=https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key={apikey}
+  TILE_API_KEY=your-maptiler-key
+  TILE_ATTRIBUTION=© MapTiler © OpenStreetMap contributors
+  ```
+- **Stadia Maps** — sign up at [client.stadiamaps.com](https://client.stadiamaps.com/), create a property, and either add your domain to it (domain auth, no key needed) or create an API key there.
+  ```env
+  TILE_URL=https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png?api_key={apikey}
+  TILE_API_KEY=your-stadia-key
+  TILE_ATTRIBUTION=© Stadia Maps © OpenMapTiles © OpenStreetMap contributors
+  ```
+
+Check your provider's free-tier limits and terms. Any provider with a standard `{z}/{x}/{y}` raster URL works.
+
 ---
 
 ## Updates and migrations
