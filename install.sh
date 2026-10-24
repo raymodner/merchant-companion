@@ -239,6 +239,25 @@ until docker exec "$API_CONTAINER" true 2>/dev/null; do
   sleep 1
 done
 
+# ── Baseline existing setup.sql databases (no migration history) ───────────────
+# A pre-existing postgres volume (e.g. from the dev setup, which bootstraps with
+# setup.sql) already has the tables but no _prisma_migrations, so the init
+# migration would fail with "relation already exists". Mark it applied instead.
+
+if ! docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" \
+     -c "SELECT 1 FROM _prisma_migrations LIMIT 1" >/dev/null 2>&1; then
+  TABLE_COUNT=$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -tAc \
+    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'" \
+    2>/dev/null | tr -d ' \n' || echo 0)
+  if [ "${TABLE_COUNT:-0}" -gt "0" ]; then
+    echo "Existing database found — baselining migration history..."
+    FIRST=$(docker exec "$API_CONTAINER" ls /app/prisma/migrations/ 2>/dev/null | grep -v '\.toml$' | sort | head -1 || true)
+    if [ -n "$FIRST" ]; then
+      docker exec "$API_CONTAINER" pnpm exec prisma migrate resolve --applied "$FIRST"
+    fi
+  fi
+fi
+
 # ── Migrations ─────────────────────────────────────────────────────────────────
 
 echo "Applying migrations..."
