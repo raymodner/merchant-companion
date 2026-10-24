@@ -169,20 +169,24 @@ All options go in `.env` (root, for Docker) or `backend/.env` (for non-Docker).
 
 ### Map tiles
 
-By default the map uses CARTO's Voyager tiles, which need no key. To use a different provider (or one that requires an API key), set these in the root `.env`:
+The map uses CARTO's Voyager tiles by default. CARTO requires a free API key for these: without one, every tile shows "API KEY REQUIRED". Set it in the root `.env`:
 
 | Variable | Default | Notes |
 |---|---|---|
-| `TILE_URL` | CARTO Voyager | Leaflet tile URL template. Put `{apikey}` where the provider expects the key |
-| `TILE_API_KEY` | — | Substituted into `{apikey}` in `TILE_URL` |
-| `TILE_ATTRIBUTION` | `© OpenStreetMap contributors · © CartoDB` | Attribution shown in the map corner — most providers require it |
+| `TILE_API_KEY` | — | Your tile provider key. Required for the default CARTO tiles |
+| `TILE_URL` | CARTO Voyager | Leaflet tile URL template for a different provider. Put `{apikey}` where the provider expects the key |
+| `TILE_ATTRIBUTION` | `© OpenStreetMap contributors, © CARTO` | Attribution shown in the map corner. Most providers require it |
 
 These are baked into the frontend at **build time**, so rebuild after changing them: `bash deploy.sh` in production, or `docker compose up --build -d frontend` in development. Without Docker, export them as `VITE_TILE_URL`, `VITE_TILE_API_KEY` and `VITE_TILE_ATTRIBUTION` before `pnpm build` / `pnpm dev`.
 
-The key ends up in the public JavaScript bundle — that's normal for tile keys. Protect it by restricting it to your domain in the provider's dashboard.
+The key ends up in the public JavaScript bundle. That's normal for tile keys.
 
 **Getting a key**
 
+- **CARTO (default)**: request one at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/). It's emailed straight back and you don't need a CARTO account. Only `TILE_API_KEY` is needed; leave `TILE_URL` empty. The free tier covers 5 million tile requests per month and is meant for non-commercial use.
+  ```env
+  TILE_API_KEY=your-carto-key
+  ```
 - **MapTiler** — sign up at [cloud.maptiler.com](https://cloud.maptiler.com/), copy the default key under **API keys**, and add your domain under the key's **Allowed HTTP origins**.
   ```env
   TILE_URL=https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key={apikey}

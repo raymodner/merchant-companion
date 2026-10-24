@@ -445,10 +445,11 @@ onMounted(() => {
   map = L.map('map').setView([52.3, 5.3], 8)
   setTimeout(() => map.invalidateSize(), 100)
 
-  // Tile provider is configurable at build time. Use `{apikey}` in VITE_TILE_URL
-  // where the provider expects its key (e.g. `...?api_key={apikey}`).
-  L.tileLayer(import.meta.env.VITE_TILE_URL || 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: import.meta.env.VITE_TILE_ATTRIBUTION || '© OpenStreetMap contributors · © CartoDB',
+  // Tile provider is configurable at build time. Defaults to CARTO Voyager, which
+  // requires a (free) key. Use `{apikey}` in VITE_TILE_URL where a custom provider
+  // expects its key (e.g. `...?api_key={apikey}`).
+  L.tileLayer(import.meta.env.VITE_TILE_URL || 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key={apikey}', {
+    attribution: import.meta.env.VITE_TILE_ATTRIBUTION || '© OpenStreetMap contributors, © CARTO',
     apikey: import.meta.env.VITE_TILE_API_KEY || '',
     maxZoom: 19,
   }).addTo(map)
